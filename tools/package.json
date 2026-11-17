@@ -1,0 +1,15 @@
+{
+  "name": "atk-component-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "atk-component 仓库的辅助脚本（Doxygen 注释标签修复等）",
+  "type": "module",
+  "scripts": {
+    "doxygen:fix": "node ./fix-doxygen-tags.mjs",
+    "doxygen:fix:verbose": "node ./fix-doxygen-tags.mjs --verbose",
+    "doxygen:fix:write": "node ./fix-doxygen-tags.mjs --write"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

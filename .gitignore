@@ -1,0 +1,9 @@
+# 外部依赖头文件（不入库）
+/include/
+
+# Doxygen 生成的文档产物（不入库）
+/.dist/
+
+/deploy/
+
+*.zip

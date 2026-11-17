@@ -1,0 +1,44 @@
+/** @mainpage 简介
+ *
+ * ATK（Aerospace Tool Kit）Component 模式以库文件对外提供函数接口，二次开发程序通过这套
+ * 接口对 ATK 进行操作与计算：建立场景与各类对象、运行仿真、计算可见性与覆盖、执行机动
+ * 规划，并输出数据报告与想定文件。
+ *
+ * 接口以 I 前缀的抽象类给出，例如根对象 \ref IAtkObjectRoot "IAtkObjectRoot"、场景
+ * \ref IScenario "IScenario"、卫星 \ref ISatellite "ISatellite"。
+ * 属性一律通过 Set 函数设置、Get 函数读取，不支持直接赋值。C++ 直接调用头文件与动态库；
+ * Java、Python、MATLAB、Octave 通过各自的封装包调用同一套接口（Octave 直接复用 Java 封装包）。
+ *
+ * ## 按语言上手
+ *
+ * 各语言的操作流程从环境准备讲到运行第一个完整案例（近地停泊轨道到地球同步轨道的快速
+ * 转移），包含依赖文件放置、编译或解释运行方式与结果核对；章节总览见
+ * \ref component_flow "快速上手"。
+ *
+ * - \ref component_flow_cpp "C++ 操作流程"
+ * - \ref component_flow_java "Java 操作流程"
+ * - \ref component_flow_python "Python 操作流程"
+ * - \ref component_flow_MATLAB "MATLAB 操作流程"
+ * - \ref component_flow_octave "Octave 操作流程"
+ *
+ * ## 按主题查接口
+ *
+ * | 主题 | 内容 | 入口 |
+ * | --- | --- | --- |
+ * | 对象 | 场景与根对象、卫星、导弹、运载火箭、飞机、地面设施与目标、舰船与潜艇、天体、传感器、通信设备、对象链与星座 | \ref by_object "对象" |
+ * | 工具 | 坐标与矢量（VGT）与批量坐标转换、可见性、覆盖与品质因子、接近与碰撞 | \ref by_tool "工具" |
+ * | 机动规划 | 机动段、推力与姿态控制、瞄准与规划序列，以及过境划分与机动检测 | \ref by_maneuver "机动规划" |
+ * | 可视化 | 各对象在二维地图与三维视图中的显示属性 | \ref by_vis "可视化" |
+ *
+ * ## 接口形态
+ *
+ * - 类：全部接口类按字母索引，可沿继承关系查看基类与派生类；类页面列出成员函数的签名、
+ *   参数与返回值说明。
+ * - 文件：按头文件浏览，已知头文件名时可直接定位。
+ *
+ * ## 前置条件
+ *
+ * 运行任何案例前，需将 ATK 安装目录下的 AstroData 文件夹复制到
+ * `IntegratingWithATK/component/bin`，并保证头文件与动态库目录位于编译、运行时可搜索的
+ * 路径内。具体步骤见对应语言的操作流程。
+ */

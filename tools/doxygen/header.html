@@ -1,0 +1,110 @@
+<!-- HTML header for doxygen 1.17.0-->
+<!-- 本文件由 `doxygen -w html` 生成（Doxygen 1.17.0），改写的地方：
+     1. TITLEAREA 区块——原来用 <table>+#projectrow 排版，现改为 flex 容器 + 自有类名（.atk-*）；
+     2. 树脚本之后加了一段内联脚本，把上次拖动的栏宽读进 CSS 变量（首帧就按最终宽度排版）；
+     3. Mermaid 占位符换成 mermaid-lazy.js（原占位符是模块脚本，会阻塞 DOMContentLoaded）；
+     4. </head> 前加了 nav-row-click.js / nav-sync-dock.js / mermaid-lazy.js 三个补丁脚本。
+     head 里的 treeview / search / stylesheet / extrastylesheet / mathjax 等 twig 占位符
+     除第 3 条外一律未动。注意：不要在模板注释里写出占位符本身（带 $ 前缀的那个词），
+     Doxygen 会把注释里的占位符也一并替换，替换结果会跑到 <!DOCTYPE> 之前，
+     导致页面进入怪异模式。
+     升级 Doxygen 后请按 tools/doxygen/README.md 重新生成再移植这几块。 -->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="$langISO">
+<head>
+<meta http-equiv="Content-Type" content="text/xhtml;charset=UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=11"/>
+<meta name="generator" content="Doxygen $doxygenversion"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<!--BEGIN PROJECT_NAME--><title>$projectname: $title</title><!--END PROJECT_NAME-->
+<!--BEGIN !PROJECT_NAME--><title>$title</title><!--END !PROJECT_NAME-->
+<!--BEGIN PROJECT_ICON-->
+<link rel="icon" href="$relpath^$projecticon" type="image/x-icon" />
+<!--END PROJECT_ICON-->
+<link href="$relpath^tabs.css" rel="stylesheet" type="text/css"/>
+<!--BEGIN FULL_SIDEBAR-->
+<script type="text/javascript">var page_layout=1;</script>
+<!--END FULL_SIDEBAR-->
+<!--BEGIN HTML_DYNAMIC_SECTIONS-->
+<script type="text/javascript" src="$relpath^dynsections.js"></script>
+<!--END HTML_DYNAMIC_SECTIONS-->
+<!--BEGIN HTML_CODE_FOLDING-->
+<script type="text/javascript" src="$relpath^codefolding.js"></script>
+<!--END HTML_CODE_FOLDING-->
+<!--BEGIN COPY_CLIPBOARD-->
+<script type="text/javascript" src="$relpath^clipboard.js"></script>
+<!--END COPY_CLIPBOARD-->
+$treeview
+<!-- 左栏占位：navtree.js 要等 DOMContentLoaded 才给 #side-nav / #doc-content 量宽度，
+     在那之前正文会先按整幅宽排一遍，看起来就是「先撑满、再出现左栏」。
+     这里趁树脚本已加载 cookie.js，在 <head> 同步读出上次拖动的栏宽写进 CSS 变量，
+     style.css 里的首帧规则就能按最终宽度排版。取不到（首次访问）就用 Doxygen 默认的
+     250px + 6px 分隔条。 -->
+<script type="text/javascript">
+(function () {
+  function readWidth(key, fallback) {
+    var raw = null;
+    try {
+      if (typeof Cookie !== 'undefined') {
+        raw = Cookie.readSetting(key, '');
+      }
+    } catch (e) {
+      raw = null;
+    }
+    var n = parseInt(raw, 10);
+    return (n > 0 && n < 4000) ? n : fallback;
+  }
+  var root = document.documentElement;
+  /* navtree.js 的左右两栏宽度都按「树内容宽 + 6px 分隔条」写进 margin/width */
+  root.style.setProperty('--atk-nav-width', (readWidth('width', 250) + 6) + 'px');
+  root.style.setProperty('--atk-page-width', readWidth('pagenav', 250) + 'px');
+})();
+</script>
+$search
+$mathjax
+$darkmode
+<!-- Mermaid 改为按需加载：Doxygen 原来在这里输出的是一段 <script type="module">，模块脚本会把
+     DOMContentLoaded 一起拖到 CDN 下载完，而每个页面都会输出它 → 每次点左树都要等
+     jsdelivr，左树迟迟建不出来。现在换成普通脚本，页面里真有 .mermaid 时才异步 import
+     （见 mermaid-lazy.js）。升级 Doxygen 后不要把这个占位符加回来。 -->
+<script type="text/javascript" src="$relpath^mermaid-lazy.js"></script>
+<link href="$relpath^$stylesheet" rel="stylesheet" type="text/css" />
+$extrastylesheet
+<!-- 左树整行可点：Doxygen 只把文字包在 <a> 里，行内空白区原本点不动（见 tools/doxygen/README.md） -->
+<script type="text/javascript" src="$relpath^nav-row-click.js"></script>
+<!-- 面板同步开关挪到导航栏、钉在搜索框左边（见 tools/doxygen/README.md） -->
+<script type="text/javascript" src="$relpath^nav-sync-dock.js"></script>
+</head>
+<body>
+<!--BEGIN FULL_SIDEBAR-->
+<div id="side-nav" class="ui-resizable side-nav-resizable"><!-- do not remove this div, it is closed by doxygen! -->
+<!--END FULL_SIDEBAR-->
+
+<div id="top"><!-- do not remove this div, it is closed by doxygen! -->
+
+<!--BEGIN TITLEAREA-->
+<div id="titlearea" class="atk-titlearea">
+ <!--BEGIN PROJECT_LOGO-->
+ <img class="atk-brand-logo" alt="Logo" src="$relpath^$projectlogo"$logosize/>
+ <!--END PROJECT_LOGO-->
+ <!--BEGIN PROJECT_NAME-->
+ <span class="atk-brand-name">$projectname<!--BEGIN PROJECT_NUMBER--><span class="atk-brand-number">&#160;$projectnumber</span><!--END PROJECT_NUMBER--></span>
+ <!--END PROJECT_NAME-->
+ <!--BEGIN PROJECT_BRIEF-->
+ <span class="atk-brand-brief">$projectbrief</span>
+ <!--END PROJECT_BRIEF-->
+ <!--BEGIN DISABLE_INDEX-->
+  <!--BEGIN SEARCHENGINE-->
+    <!--BEGIN !FULL_SIDEBAR-->
+ <div class="atk-titlearea-search">$searchbox</div>
+    <!--END !FULL_SIDEBAR-->
+  <!--END SEARCHENGINE-->
+ <!--END DISABLE_INDEX-->
+</div>
+<!--BEGIN SEARCHENGINE-->
+ <!--BEGIN FULL_SIDEBAR-->
+<div id="titlearea-sidebar-search">$searchbox</div>
+ <!--END FULL_SIDEBAR-->
+<!--END SEARCHENGINE-->
+<!--END TITLEAREA-->
+<!-- end header part -->

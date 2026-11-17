@@ -1,0 +1,314 @@
+# ============================================================================
+# ATK Component 头文件文档配置（Doxygen 1.17.0）
+# 用法：在根目录执行  doxygen Doxyfile
+# ============================================================================
+
+# ============================================================================
+# 配置文件基础信息与项目元信息
+# ============================================================================
+
+# 配置文件自身的编码，须与实际保存编码一致
+DOXYFILE_ENCODING      = UTF-8
+# 项目名，显示在页面标题、导航栏和页脚
+PROJECT_NAME           = "Aerospace Tool Kit（Component）"
+# 项目简短说明，显示在首页标题下方
+# PROJECT_BRIEF          = "ATK 二次开发 component 模式接口参考（IntegratingWithATK/component/include/）"
+# 标题栏左侧的 logo（深色渐变底用白色版，取自 atk-doc 的 logoDark.png），
+# 尺寸与留白在 tools/doxygen/style.css 的 .atk-brand-logo 里控制
+PROJECT_LOGO           = tools/doxygen/logo.png
+# 所有生成物的根输出目录（相对当前工作目录）
+OUTPUT_DIRECTORY       = .dist/atk-component-doc
+# 生成文档的界面语言
+OUTPUT_LANGUAGE        = Chinese
+# 允许文档中的标识符出现 Unicode 字符（中文注释/名称不报错）
+ALLOW_UNICODE_NAMES    = YES
+# 解析/生成使用的并行线程数，0 表示由 Doxygen 自动决定
+NUM_PROC_THREADS       = 0
+
+# ============================================================================
+# 输入扫描范围
+# ============================================================================
+
+# ---------- 输入 ----------
+# 扫描的输入目录：
+#   include  接口头文件
+#   docs     文档源文件（自定义的文档）
+INPUT = include docs
+# 参与解析的文件后缀模式（不包含 .inl）
+# .md 是二次开发操作流程页面的载体，每个文件用 \page 声明一页
+FILE_PATTERNS          = *.h *.hpp *.dox *.md
+# 递归扫描 INPUT 下的所有子目录
+RECURSIVE              = YES
+# 源文件读取编码
+INPUT_ENCODING         = UTF-8
+# #include 指令的查找路径（让类型引用能被解析）
+INCLUDE_PATH           = include
+# 文档中显示文件完整路径
+FULL_PATH_NAMES        = NO
+# 显示文件路径时去掉的前缀，使路径更短
+STRIP_FROM_PATH        = include
+
+# ---------- 图片 ----------
+# 文档页面里 \image 引用的图片查找目录。Doxygen 会把被引用的图片扁平复制到 HTML
+# 输出根目录，所以图片文件名必须在整个文档范围内唯一，否则同名文件会互相覆盖。
+IMAGE_PATH             = docs/操作流程/media
+
+# ---------- 排除目录：ast 相关 ----------
+# 路径相对"运行 doxygen 的目录"（仓库根），用正斜杠。
+EXCLUDE                = include/ast \
+                         include/AstAI \
+                         include/AstAnalyzer \
+                         include/AstCalc \
+                         include/AstChart \
+                         include/AstCmd \
+                         include/AstCore \
+                         include/AstDataUpdate \
+                         include/AstEngine \
+                         include/AstFault \
+                         include/AstLoader \
+                         include/AstMath \
+                         include/AstMock \
+                         include/AstOpt \
+                         include/AstPlot \
+                         include/AstReport \
+                         include/AstScript \
+                         include/AstSim \
+                         include/AstSPICE \
+                         include/AstTest \
+                         include/AstUiAI \
+                         include/AstUiCore \
+                         include/AstUiDataUpdate \
+                         include/AstUiPilot \
+                         include/AstUiUtil \
+                         include/AstUtil \
+                         include/AstVisualization \
+                         include/AstWeather \
+                         include/Satellite/Astromaster \
+                         include/AstCompiler.h \
+                         include/AstConfig.h \
+                         include/AstGlobal.h
+
+# ============================================================================
+# 提取范围与显示策略
+# ============================================================================
+
+# ---------- 提取范围 ----------
+# 提取所有实体（包括没有注释的），保证接口文档完整
+EXTRACT_ALL            = NO
+# 提取 static 成员和函数
+EXTRACT_STATIC         = NO
+# 不提取 private；配合 PREDEFINED 里的 protected=private，protected 段也一起消失
+EXTRACT_PRIVATE        = NO
+# 提取文件内定义的局部类
+EXTRACT_LOCAL_CLASSES  = NO
+# 是否包含匿名命名空间内的实体
+EXTRACT_ANON_NSPACES   = NO
+# 是否隐藏无注释的成员
+HIDE_UNDOC_MEMBERS     = YES
+# 是否隐藏无注释的类
+HIDE_UNDOC_CLASSES     = NO
+# 文件名大小是否敏感（Windows 文件系统兼容）
+CASE_SENSE_NAMES       = NO
+# 成员详细说明的标题不显示 类名:: / 命名空间:: 前缀
+HIDE_SCOPE_NAMES       = YES
+# 将类从基类继承而来的成员，当作该类“自己”的成员一样，直接混入（inline）到当前类的成员列表中显示，而不是把它们单独归类到“继承的成员”区域
+# INLINE_INHERITED_MEMB  = YES
+# 控制是否隐藏 Doxygen 页面标题末尾附加的 “Compound Reference”（复合参考）字样
+HIDE_COMPOUND_REFERENCE = YES
+# ---------- 页面外观定制（统一放在 tools/doxygen/，各项说明见该目录 README.md） ----------
+# 导航栏 tab 的顺序 / 显隐 / 标题
+LAYOUT_FILE            = tools/doxygen/layout.xml
+# 自定义页头：Doxygen 1.17.0 官方模板，仅改写标题栏区块为自有标记
+HTML_HEADER            = tools/doxygen/header.html
+# 自定义样式表：站点皮肤（已并入原先单独的 doxy_strip_tags 规则）
+HTML_EXTRA_STYLESHEET  = tools/doxygen/style.css
+# 额外脚本：左树整行可点（Doxygen 只把条目文字包在 <a> 里，行内空白区原本点不动）、
+# 面板同步开关挪进导航栏、Mermaid 按需加载（原占位符是模块脚本，会阻塞 DOMContentLoaded）
+HTML_EXTRA_FILES       = tools/doxygen/nav-row-click.js \
+                         tools/doxygen/nav-sync-dock.js \
+                         tools/doxygen/mermaid-lazy.js
+
+# ============================================================================
+# 注释解析
+# ============================================================================
+
+# ---------- 注释解析 ----------
+# 旧模板 412 个文件的 /// 首行没有 @brief，靠这条让首句成为摘要
+JAVADOC_AUTOBRIEF      = YES
+# 不启用 Qt 风格的首行自动摘要
+QT_AUTOBRIEF           = NO
+# 多行 C++ 注释是否把整段首行当作简要说明
+MULTILINE_CPP_IS_BRIEF = NO
+# 子类未写注释时是否继承基类文档
+INHERIT_DOCS           = YES
+# 是否把 @name 分组注释复制给组内每个成员
+DISTRIBUTE_GROUP_DOC   = NO
+# 按 @name 把成员分组显示
+SUBGROUPING            = YES
+
+# ============================================================================
+# 告警
+# ============================================================================
+
+# ---------- 告警 ----------
+# 运行时打印进度和统计信息
+QUIET                  = NO
+# 启用告警输出
+WARNINGS               = YES
+# 是否对"缺少注释"告警（与 EXTRACT_ALL=YES 配套）
+WARN_IF_UNDOCUMENTED   = YES
+# 是否对"注释语法错误（如 @param 拼写错误）"告警
+WARN_IF_DOC_ERROR      = YES
+# 注释不完整时告警
+WARN_IF_INCOMPLETE_DOC = YES
+# 参数缺少 @param 文档时不告警
+WARN_NO_PARAMDOC       = NO
+# 告警不升级为构建错误
+WARN_AS_ERROR          = NO
+# 告警写入的日志文件
+WARN_LOGFILE           = .dist/doxygen-warnings.log
+
+# ============================================================================
+# 字母索引
+# ============================================================================
+
+# ---------- 字母索引 ----------
+# 接口类统一用 I 前缀命名（IScenario、ISatellite…）。若按真实类名归组，421 个条目
+# 会有 419 个全挤在 I 下面，顶部字母条只剩 A / I / T 三个，索引等于没有。
+# IGNORE_PREFIX 让字母索引按“去掉前缀后剩下的名字”归组和排序：
+#   IAccessConstraint -> A    ICrdn -> C    IVePropagator -> V
+# 只影响类索引页的分组与排序；类名本身、页面链接、类列表页（annotated.html）的
+# 排序都不变。
+# 副作用：该选项对函数/成员名同样生效。成员索引里 I 开头的 26 个函数（Is*、Insert、
+# Item、IndexOf）会被归到去掉 I 后的字母下（Is* -> S、Insert -> N），成员索引的 I
+# 字母随之消失。类索引的收益远大于这点影响，故接受。
+# 该选项要求 ALPHABETICAL_INDEX = YES（默认值，这里显式写出，避免以后改默认值时静默失效）。
+ALPHABETICAL_INDEX     = YES
+IGNORE_PREFIX          = I
+
+# ============================================================================
+# HTML 输出与页面显示
+# ============================================================================
+
+# ---------- 输出 ----------
+# 生成 HTML 文档
+GENERATE_HTML          = YES
+# HTML 输出子目录（相对 OUTPUT_DIRECTORY）
+HTML_OUTPUT            = html
+# HTML 主题：浅色
+HTML_COLORSTYLE        = LIGHT
+# 允许页面区块动态折叠/展开
+HTML_DYNAMIC_SECTIONS  = YES
+# 生成左侧树形导航
+GENERATE_TREEVIEW      = YES
+# 启用内置搜索引擎
+SEARCHENGINE           = YES
+# 不使用外部搜索服务（保持纯静态 HTML）
+SERVER_BASED_SEARCH    = NO
+
+# 类页面是否显示头文件
+SHOW_HEADERFILE        = NO
+# 文件页面不列该文件 include 了哪些头文件
+SHOW_INCLUDE_FILES     = NO
+
+# ============================================================================
+# 列表页开关
+# ============================================================================
+
+# 待办事项（\todo）
+GENERATE_TODOLIST      = NO
+# 测试列表（\test）
+GENERATE_TESTLIST      = NO
+# 缺陷列表（\bug）
+GENERATE_BUGLIST       = NO
+# 弃用列表（\deprecated）
+GENERATE_DEPRECATEDLIST= NO
+
+# ============================================================================
+# 其他输出格式开关
+# ============================================================================
+
+# 是否生成 LaTeX
+GENERATE_LATEX         = NO
+# 不生成 RTF
+GENERATE_RTF           = NO
+# 不生成 man 手册页
+GENERATE_MAN           = NO
+# 不生成 DocBook
+GENERATE_DOCBOOK       = NO
+# 不生成 SQLite3 输出
+GENERATE_SQLITE3       = NO
+
+# ============================================================================
+# XML 验收输出
+# ============================================================================
+
+# XML 留着做验收：检查 namespace ast、签名里没有 AST_*_API
+# 生成 XML 输出（供脚本做验收检查）
+GENERATE_XML           = YES
+# XML 输出子目录
+XML_OUTPUT             = xml
+# XML 中不附带源码清单（减小体积）
+XML_PROGRAMLISTING     = NO
+
+# ============================================================================
+# 源码浏览器
+# ============================================================================
+
+# 不生成源码浏览器页面
+SOURCE_BROWSER         = NO
+# 不把源码内联进文档
+INLINE_SOURCES         = NO
+
+# ============================================================================
+# 预处理与预定义宏
+# ============================================================================
+
+# ---------- 预处理 ----------
+# MACRO_EXPANSION 必须 YES：NO 时 PREDEFINED 里的宏不会被替换，
+# protected=private 这种"关键字替换"会完全失效。
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+# 只展开 PREDEFINED 里列出的宏；源码中定义的宏一律不动
+# （全展开会把 CCoord 变成 CCoord3，签名和源码对不上）
+EXPAND_ONLY_PREDEF     = YES
+
+SEARCH_INCLUDES        = YES
+SKIP_FUNCTION_MACROS   = YES
+
+# 预定义宏：相当于命令行 -D。
+# 只保留 include/ 下非 ast 前缀目录里真正用到的宏：
+#   IATKOBJECT_API        428 处类声明
+#   A_* 属性宏            见下方，合计约 40 处
+#   protected=private     让 protected 段降级为 private，配合 EXTRACT_PRIVATE=NO 隐藏
+# AST_*_API/CAPI 和 AST_NAMESPACE_* 全部删除：它们只出现在 AstGlobal.h 的定义块，
+# 以及已被 EXCLUDE 的 ast 目录里。
+# 注意：续行符 \ 必须是行尾最后一个字符，后面不能跟注释或空格，
+#       否则续行失效，后续条目会被当成"未知配置项"静默丢弃。
+PREDEFINED             = __cplusplus=201703L \
+                         IATKOBJECT_API= \
+                         A_ALWAYS_INLINE= A_NODISCARD= A_NORETURN= A_NO_INLINE= \
+                         A_PURE= A_STRONG_INLINE= A_CONST= A_RESTRICT= \
+                         A_CONSTEXPR_CXX14= A_CONSTEXPR_CXX17= \
+                         A_DECL_EXPORT= A_DECL_IMPORT= A_DECL_EXTERN_C= \
+                         protected=private \
+                         "IATKOBJECT_VGT_SETGET_DECL(n,c)= err_t Set##n(c value); c Get##n();" \
+                         "IATKOBJECT_VGT_SETGET_DEG_DECL(n,c)= err_t Set##n(c value); c Get##n();" \
+                         "IATKOBJECT_VGT_SETGET_CTIMEABS_DECL(n)= err_t Set##n(std::string strCTimeAbs); std::string Get##n();" \
+                         "IATKOBJECT_VGT_SETGET_CENTRALBODY_DECL(n)= err_t Set##n(std::string strCentralBodyPath); std::string Get##n();" \
+                         "IATKOBJECT_VGT_SETGET_VGT_DECL(n)= err_t Set##n(std::string strVGTPath); std::string Get##n();"
+
+# ============================================================================
+# 图形输出
+# ============================================================================
+
+# ---------- 图形 ----------
+# 本机没装 Graphviz（dot 不在 PATH），先关；装了以后改 YES 就有类图/继承图
+HAVE_DOT               = YES     # 调用 Graphviz dot 生成图表
+DOT_PATH               = C:/Program Files/Graphviz/bin
+CLASS_GRAPH            = YES    # 启用类继承图（需 HAVE_DOT=YES 才生效）
+COLLABORATION_GRAPH    = NO    # 启用协作/关联图（需 HAVE_DOT=YES 才生效）
+# 单张图最多多少个节点，超出的折叠成 "..."（默认 50）
+DOT_GRAPH_MAX_NODES    = 50
+# 协作图向下追几层，0 = 不限（默认 0）
+MAX_DOT_GRAPH_DEPTH    = 3

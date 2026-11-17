@@ -1,0 +1,966 @@
+/* ============================================================================
+ * Doxygen 皮肤（HTML_EXTRA_STYLESHEET）
+ * 视觉参考 atk-doc（.vuepress/styles）的站点样式：
+ *   标题栏  沿用其导航栏渐变 #003cb4 → #0084ff + 白字 + 白 logo
+ *   菜单栏  沿用其面包屑 .vp-breadcrumb 的白底细条 / 灰字 / 加粗强调
+ *
+ * 分两类写法，改之前先看清楚是哪一类：
+ *   一、标题栏：结构由 tools/doxygen/header.html 自己写，样式只作用于我们自己的
+ *       .atk-* 类名，不去碰 Doxygen 的默认类（升级 Doxygen 时更不容易坏）。
+ *   二、菜单栏及其后：那段 DOM 是 Doxygen 生成器硬编码输出的（#main-nav、
+ *       </div><!-- top -->、#side-nav、#container…），模板够不到，只能覆盖
+ *       Doxygen 的默认类。
+ * ==========================================================================*/
+
+/* ---------- 通用修正 ---------- */
+/* 隐藏每个类/成员注释里的 作者、日期、版本、自某版本起 字段 */
+dl.section.author,
+dl.section.authors,
+dl.section.date,
+dl.section.version,
+dl.section.since {
+  display: none !important;
+}
+
+/* ---------- 函数/参数表 ---------- */
+/* 参数表：方向列做成淡色小标签 */
+table.params td.paramdir {
+  color: #888;
+}
+/* 参数名等宽一点，和说明拉开 */
+table.params td.paramname {
+  font-family: Consolas, monospace;
+  padding-right: 8px;
+}
+
+/* ---------- 成员函数汇总表 / 成员函数说明：只调颜色 ---------- */
+/* Doxygen 默认给这两块用的是偏蓝的灰：单元格 #D5DDEC 描边、签名行 #F9FAFC 底，
+   说明区 #A8B8D9 描边 + #EEF1F7 底。和站点的中性灰（#eff2f5 / #e5e8ed）摆在一起
+   偏蓝、偏重。这里只换颜色，结构一律不动——描边、圆角、标签页、投影都保留，
+   行分隔和卡片边界都还在，API 文档该有的对照关系不受影响。 */
+
+/* 汇总表：描边换中性浅灰；签名行底色提到接近白，避免整块发灰。
+   首行顶上那圈描边来自 doxygen.css 里 3 个类名的选择器（tr.heading + …），
+   所以用 #doc-content 提一级优先级——只改颜色，宽度、圆角、分隔都不动。 */
+#doc-content table.memberdecls td {
+  border-color: #e5e8ed;
+}
+
+.memItemLeft,
+.memItemRight,
+.memTemplParams {
+  background-color: #f8f9fa;
+}
+
+/* 说明行那层内阴影会把整行压灰，去掉更干净；文字色仍是原来的 #555，对比度不变 */
+table.memberdecls tr[class^='memdesc'] {
+  box-shadow: none;
+}
+
+/* 说明区：标签页 / 签名条 / 卡片下半部统一换成中性浅灰描边 */
+.memtitle {
+  border-color: #e5e8ed;
+  background-color: #f7f8fa;
+  /* 第一条阴影是用来盖住卡片顶边、把标签页贴到卡片上的，颜色必须跟底色一致 */
+  box-shadow: 0 10px 0 -1px #f7f8fa,
+              0 1px 4px 0 rgb(0 0 0 / 4%);
+}
+
+.memtitle::after {
+  background: #f7f8fa;
+}
+
+.memitem {
+  box-shadow: 0 1px 4px 0 rgb(0 0 0 / 4%);
+}
+
+/* 签名条：文字跟着「正文字色」一节统一成 #213547（doxygen.css 给 .memproto 单独写的是
+   藏青 #253555，不压一下就会比正文深一档）。 */
+.memproto {
+  border-color: #e5e8ed;
+  background-color: #f7f8fa;
+  color: #213547;
+}
+
+.memdoc {
+  border-color: #e5e8ed;
+}
+
+/* ---------- Markdown 表格（docs/ 里用 | 写的表）：只调颜色 ---------- */
+/* Doxygen 给这套表用的是它自带的藏青配色：单元格描边 #2D4068、表头 #374F7F 底 + 白字。
+   整页其余部分是白底 + 中性浅灰，这一块深色是页面上唯一的重色，和白色导航栏、
+   左侧树、成员表都不是一套。这里只换颜色：描边取成员表同一档 #e5e8ed；表头底色取
+   导航栏下方那条 10px 间隔条的 #eff2f5；原来靠白字压住深底，浅底上白字没法看，
+   文字转近黑 #213547（与正文同色；表头 110% 粗体本身已经和正文拉开层次，
+   不需要再加深色块）。
+   表头 110% 字号、粗体（浏览器默认）、单元格内边距、表格外边距全部沿用默认值。 */
+table.markdownTable td,
+table.markdownTable th {
+  border-color: #e5e8ed;
+}
+
+/* 表头的四个类名由 Doxygen 按列对齐方式分别给出（Left / Right / Center / None），
+   默认样式是同一个深蓝底 + 白字，所以四个都得列上，少一个就漏一列。 */
+th.markdownTableHeadLeft,
+th.markdownTableHeadRight,
+th.markdownTableHeadCenter,
+th.markdownTableHeadNone {
+  background-color: #eff2f5;
+  color: #213547;
+}
+
+/* ---------- 正文字色 ---------- */
+/* Doxygen 默认正文是纯黑（body { color: black }），和站点其余部分（左树/菜单的
+   #191919、#646a73）放在一起偏硬。统一换成 #213547（深蓝灰，同 atk-doc 正文的色值）。
+   写在这一层就够：标题（h1~h6 默认没有自己的颜色）、段落、列表、表格单元格、
+   成员说明区都从 body 继承，只有下面几类是显式另写的，不在这里管——
+     · .mdescLeft / .mdescRight  #555（汇总表里的说明，刻意压灰做次要信息）
+     · h2.groupheader            #354C7B（Doxygen 的分节标题色，带一条下划阴影线）
+     · 代码块 pre / div.fragment  自带配色（语法高亮不能跟着变）
+     · 左树、菜单栏、面包屑       属于导航，各有各的色阶 */
+body {
+  color: #213547;
+}
+
+/* ---------- 标题色 ---------- */
+/* 页面上绝大多数标题本来就没有自己的颜色（.title、h2/h3/h4.doxsection、h2.memtitle），
+   继承 body 就已经是 #213547。只有 Doxygen 的分节标题 h2.groupheader——类页的
+   「Public 成员函数」「详细描述」「成员函数说明」、目录页的「文件」——在 doxygen.css
+   里单独写了藏青 #354C7B，是唯一一个没跟正文同色的标题，这里统一成 #213547。
+   顺带把 h1~h6、.title、div.groupHeader 一起列上：它们现在都没写颜色（列不列都一样），
+   留着是防止换 Doxygen 版本时又给某个标题塞一个自己的颜色。 */
+h1, h2, h3, h4, h5, h6,
+.title,
+h2.groupheader,
+div.groupHeader {
+  color: #213547;
+  font-weight: bold;
+}
+
+/* ---------- 正文链接色 ---------- */
+/* Doxygen 默认的链接色是藏青 #3D578C（指向类 / 成员的那批 a.el 也是它）。放在白底正文里
+   偏暗偏灰，和站点主题蓝（左树选中态 #1456f0、标题栏渐变、搜索框）不是一家，
+   统一换成 #235ee1。
+   下面这串选择器照着 doxygen.css 抄：默认色分散在 a、.contents a:visited、
+   a.el / a.code / a.line 三处，后两处带类名或伪类，只写一条 a 压不住，
+   漏一条就会剩下几条还是藏青的链接（a.el 最明显，正文里一万多处都是它）。
+   只改颜色：a.el 的粗体、下划线、悬停规则（span.label a:hover 用的 currentColor
+   下划线和背景线）都跟着新色走，不动。 */
+a,
+a.el,
+a.code,
+a.line,
+a.el:visited,
+a.code:visited,
+a.line:visited,
+.contents a:visited {
+  color: #235ee1;
+}
+
+/* ---------- 顶部标题栏（作用于 header.html 里的 .atk-* 结构） ---------- */
+/* 用 #id + .类 提高优先级，压过 doxygen.css 里 #titlearea 的白底/下边框/padding。
+   高度 60px、左内边距 2rem（logo 的左边线），纵向居中由 flex 负责，
+   不再需要原来 table 方案的 vertical-align 撑对齐。 */
+#titlearea.atk-titlearea {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;              /* 原 #projectlogo + #projectalign 的 0.75rem 间距 */
+  height: 60px;
+  margin: 0;
+  padding: 0 1rem;
+  background: linear-gradient(to top, #003cb4, #0084ff);
+  color: #fff;
+  border-bottom: 0;
+}
+
+/* logo 只用高度定尺寸，宽度按原图比例，避免不同分辨率的图被拉伸 */
+.atk-brand-logo {
+  display: block;
+  flex: 0 0 auto;
+  height: 36px;
+  width: auto;
+  border: 0;
+}
+
+/* 项目名：Doxygen 默认 200% 偏大，收到与 logo 相称的 20px。
+   窄屏（手机）下靠 min-width:0 + 省略号收住，避免整条标题栏把页面撑出横向滚动 */
+.atk-brand-name {
+  font-family: inherit;      /* 与 Doxygen 的 #projectname 同字族（body 的 system-ui 栈） */
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+  color: #fff;
+  white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 版本号（PROJECT_NUMBER，当前未启用），沿用 Doxygen 默认的 50% 字号再淡一点 */
+.atk-brand-number {
+  font-size: 50%;
+  margin-left: 0.5em;
+  opacity: 0.85;
+}
+
+/* 项目简介（PROJECT_BRIEF，当前未启用） */
+.atk-brand-brief {
+  font-size: 85%;
+  color: rgb(255 255 255 / 80%);
+  white-space: nowrap;
+}
+
+/* DISABLE_INDEX=YES 时搜索框会落到标题栏里，推到最右侧 */
+.atk-titlearea-search {
+  margin-left: auto;
+}
+
+/* ---------- 顶部菜单栏（覆盖 Doxygen 生成器输出的 DOM） ---------- */
+/* 本节前半段是 <768px 的样式：窄屏下 Doxygen 会把菜单收成汉堡抽屉（tabs.css 的断点
+   就是 768px），菜单栏保持“白底细条 + 10px 浅灰间隔条”的样子。
+   ≥768px 的桌面布局在节末的媒体查询里：链接和搜索框叠进渐变标题栏，对齐 atk-doc 的
+   .vp-navbar 三段式（左 logo+站名 / 中链接 / 右搜索框）。 */
+#main-nav {
+  background-color: #fff;
+  /* 面包屑与正文之间的那道 10px 浅灰间隔条（#eff2f5），atk-doc 里是页面底色透出来的 */
+  border-bottom: 10px solid #eff2f5;
+}
+
+#main-nav .sm-dox {
+  background: transparent;
+  /* 与标题栏的 logo 左边线对齐（logo 的 2rem 减去首项自带的 1rem 内边距） */
+  padding-left: 0.5rem;
+}
+
+/* 一级菜单项：字号/行高/字色对齐面包屑，hover 与展开态只加粗，不做圆角色块 */
+#main-nav .sm-dox > li > a,
+#main-nav .sm-dox > li > a:active,
+#main-nav .sm-dox > li > a:focus {
+  padding: 0 30px 0 16px;
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 35px;
+  color: #646a73;
+  background: transparent;
+  border-radius: 0;
+}
+
+#main-nav .sm-dox > li > a:hover,
+#main-nav .sm-dox > li > a.highlighted {
+  color: #191919;
+  font-weight: 600;
+  background: transparent;
+}
+
+/* 聚焦不要浏览器默认焦点环。doxygen.css 里有一条
+   `#main-menu a:focus { outline: auto }`，带 id 优先级，压过 tabs.css 的
+   `.sm-dox a:focus { outline: 0 }`，于是鼠标点一下菜单项就会画出一圈框：
+   outline-color 取 currentColor，而链接在标题栏里是白色，蓝底上就是一道
+   3px 白框 + 1px 偏移（实测 outline-style:auto / 3px / rgb(255,255,255) / offset 1px）。
+   atk-doc 的导航没有这个，去掉；:focus-visible 一并去掉，否则键盘 Tab 过来仍会画。
+   顺带说明：这份主题里菜单项本来就没有任何"聚焦"视觉，靠 hover 加粗提示。 */
+#main-nav #main-menu a:focus,
+#main-nav #main-menu a:focus-visible {
+  outline: none;
+}
+
+/* 下拉指示：tabs.css 用 5×5 的 border 画了个 45° 的小箭头，但同一个元素上还留着
+   `background-color: white`（.sm-dox a span.sub-arrow），不透明底会把箭头填成一个
+   菱形 ◆，所以这里连同底色一起改掉。也别往它上面塞背景图——它是 5×5 + overflow:hidden。 */
+#main-nav .sm-dox > li > a span.sub-arrow {
+  background-color: transparent;
+  border-right-color: #7e8791;
+  border-bottom-color: #7e8791;
+}
+
+#main-nav .sm-dox > li > a span.sub-arrow:before {
+  content: none;
+  display: none;
+}
+
+/* 下拉面板：白底，不描边。hover 底色现在是通栏的，一旦有 1px 边框，
+   灰条就会紧贴边框内沿、在两侧看出一道"夹边"，所以边框直接去掉。
+   （tabs.css 原本给的是 1px solid #bbb，必须显式写 border: 0 才能压掉。）
+
+   圆角必须带 !important：tabs.css 是 `border-radius: 5px !important`。
+   这里必须改成直角——多级菜单的面板是紧挨着排的（子面板 left 正好等于父面板的右边界），
+   5px 圆角会在每个接缝处挖出两个缺口，看着像面板互相"咬"了一口。 */
+#main-nav .sm-dox ul {
+  border: 0;
+  border-radius: 0 !important;
+  /* 不在这里投 box-shadow，见下面一级面板的 drop-shadow。 */
+  box-shadow: none;
+}
+
+/* 多级菜单的投影只能投在整块菜单的"轮廓"上，不能一个面板一个 box-shadow：
+   子面板是父面板的 DOM 后代，一定画在父面板之上，于是子面板左侧 8px 的阴影会直接
+   压在父面板白底上，父面板右侧那 8px 又压在子面板上，接缝处就叠出一道深灰"夹心"；
+   面板又是紧贴着的，这道灰边会像两条边互相咬住。
+   filter: drop-shadow 吃的是元素的 alpha 轮廓，而三级、四级面板本来就是一级面板的
+   后代，所以整串阶梯只会在最外圈投一层阴影，接缝内部干干净净。
+   （drop-shadow 没有 spread，参数按 `x y blur color` 给。） */
+#main-nav .sm-dox > li > ul {
+  filter: drop-shadow(0 4px 12px rgb(0 0 0 / 12%));
+}
+
+/* 面板顶上的小尖角：tabs.css 用两个 border 三角形叠出来的——`::before` 是 #bbb 的
+   9px 三角形，`::after` 是白色 8px 三角形，靠这 1px 的错位冒充"描边"。
+   面板现在是直角、无边框、只有一层浅投影，这圈 #bbb 就成了整个菜单里唯一一条硬边，
+   在纯白底上格外跳。把描边色压到和投影同一量级的浅灰：尖角还在（仍能指出它属于哪个
+   标签页），但不再是一条发黑的线。（比色块更省事，也不用去动 tabs.css。） */
+#main-nav .sm-dox > li > ul::before {
+  border-bottom-color: #e8e8e8;
+}
+
+#main-nav .sm-dox ul a {
+  /* 右侧多留出下拉箭头的宽度，避免二级菜单项文字压到箭头 */
+  padding: 0 28px 0 12px;
+  font-family: inherit;
+  font-size: 20px;
+  /* 行高 38 = 原 32 行高 + 去掉的 li 上下各 3px 内边距，行距维持不变 */
+  line-height: 38px;
+  color: #646a73;
+}
+
+/* tabs.css 的 `.sm-dox li { padding: 3px }` 是给一级菜单留间距的，
+   但下拉条目也是 li，于是 hover 底色左右各缩进 3px、缩在面板中间。
+   条目层把内边距清零，底色就能铺满整行（左右顶到面板内边框）。 */
+#main-nav .sm-dox ul > li {
+  padding: 0;
+}
+
+/* 行高变高后，二级菜单的 › 箭头要跟着回到行中 */
+#main-nav .sm-dox ul a span.sub-arrow {
+  top: calc(50% - 3px);
+}
+
+/* hover 底色取 atk-doc 下拉条的实测值 #EDEEEE（中性浅灰，不是品牌蓝），
+   文字同时压深到 #191919，和它展开时的表现一致。
+   border-radius 必须带 !important：tabs.css 的 `.sm-dox a:hover` 用的是
+   `border-radius: 5px!important`，普通声明（哪怕 ID 选择器）一律压不住，
+   灰条会一直保持圆角、看着像个小胶囊。 */
+#main-nav .sm-dox ul a:hover {
+  background-color: #edeeee;
+  color: #191919;
+  border-radius: 0 !important;
+}
+
+/* 下拉箭头：tabs.css 给这个 5×5 的小方块涂了白底（hover 时又换成 #dce2ef），
+   叠在灰色 hover 条上就是一块发亮的小方块，看着像"阴影重叠"。改成透明，
+   只保留 2px 的箭头边框。`:before` 会被塞进 "+"/"-" 字符，一并关掉。 */
+#main-nav .sm-dox ul a span.sub-arrow,
+#main-nav .sm-dox ul a:hover span.sub-arrow {
+  background-color: transparent;
+}
+
+#main-nav .sm-dox ul a span.sub-arrow:before {
+  content: none;
+  display: none;
+}
+
+/* ---------- ≥768px：链接与搜索框叠进标题栏，对齐 atk-doc 的 .vp-navbar ---------- */
+/* #main-nav 是生成器输出的、位置写死在 #titlearea 之后的兄弟块，模板挪不动它，
+   所以用绝对定位把它提回标题栏那一行；原本占的那一行高度随之消失，
+   10px 间隔条改由 #titlearea 的底边框承担。 */
+@media (min-width: 768px) {
+  /* 只给 #top 一个定位基准，不在它身上堆 z-index：
+     整块加 z-index 会新建一个层叠上下文，把左侧树栏（#side-nav 是 position:absolute）
+     一起卷进层级比较里，很容易在某些浏览器/缩放下把树栏压到正文后面去。
+     抬高层级这件事只交给 #main-nav 自己做。 */
+  #top {
+    position: relative;
+  }
+
+  #main-nav {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 200;              /* 压住下方正文与下拉面板 */
+    display: flex;
+    align-items: center;
+    height: 60px;              /* 与 #titlearea 同高，正好叠在渐变栏上 */
+    padding: 0 1rem;
+    background: transparent;
+    border-bottom: 0;
+  }
+
+  #main-nav .sm-dox {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;   /* 链接整行居中，同 atk-doc 的 .vp-navbar-center */
+    padding: 0;
+  }
+
+  /* 搜索框脱离居中的链接流，固定在右侧，右边缘与 logo 的 2rem 内边距对齐 */
+  #main-nav .sm-dox > li#searchBoxPos2 {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+  }
+
+  /* 蓝底上链接转白；hover / 展开态只加粗，不换色块 */
+  #main-nav .sm-dox > li > a,
+  #main-nav .sm-dox > li > a:active,
+  #main-nav .sm-dox > li > a:focus,
+  #main-nav .sm-dox > li > a:hover,
+  #main-nav .sm-dox > li > a.highlighted {
+    color: #fff;
+  }
+
+  /* 下拉箭头换白色版（原灰色在蓝底上几乎看不见） */
+  #main-nav .sm-dox > li > a span.sub-arrow {
+    border-right-color: rgb(255 255 255 / 75%);
+    border-bottom-color: rgb(255 255 255 / 75%);
+  }
+
+  /* 下拉面板：tabs.css 给 .sm / .sm li 都设了 position:relative，面板的定位基准
+     就变成了那个 41px 高的 li（或 ul），算出来正好压在标题栏底部、盖住 10px 间隔条。
+     把这两层改回 static，定位基准回到 60px 高的 #main-nav，
+     100% + 10px 就落到间隔条下方、正文顶部。 */
+  #main-nav .sm-dox#main-menu,
+  #main-nav .sm-dox > li {
+    position: static;
+  }
+
+  #main-nav .sm-dox > li > ul {
+    top: calc(100% + 10px);
+  }
+
+  /* 搜索框：白底直角块，直接压在渐变栏上（不做胶囊圆角）。
+     宽高都写成固定值，不依赖 7.5em / 1.6em 这类相对尺寸——search.css 里
+     #MSearchField 的 font-size 在部分环境（高 DPR、触摸屏、浏览器最小字号设置）
+     会落到 16px 而高度仍是 22px，字会被框底切掉。
+
+     纵向居中必须走 flex。search.css 里 .left / .right 是 inline-block + line-height，
+     放大镜（inline-block，基线=底边）和叉号（#MSearchCloseImg 自带 6px 上外边距）
+     都会被顶到框的上半部分，实测分别偏上 5px / 4.5px——这就是"图标没垂直居中"。 */
+  #main-nav #MSearchBox {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    margin-right: 0;
+    padding: 0 10px 0 12px;
+    background: #fff;
+    border: 0;
+    border-radius: 0;
+  }
+
+  #main-nav #MSearchBox .left,
+  #main-nav #MSearchBox .right {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    height: 100%;
+    line-height: 1;
+  }
+
+  #main-nav #MSearchBox .right {
+    width: auto;
+    margin-left: 8px;
+  }
+
+  /* 放大镜：search.css 用 ::before / ::after 拼出 9×9 圆圈 + 4px 手柄，既小又贴着
+     盒子上沿，放大只能靠改一堆 top/left 常量。换成 SVG，交给 background 居中，
+     改尺寸只动 background-size 这一个值。盒子加宽到 26px 是为了给右侧的
+     scopes 下拉三角腾位置（放大镜靠左、三角靠右），两者互不重叠。 */
+  #main-nav #MSearchBox .search-icon {
+    flex: 0 0 auto;
+    width: 26px;
+    height: 18px;
+    margin: 0;
+    /* 整块（放大镜 + 下拉三角）都是 scopes 菜单的悬停热区，但它是 <span>，
+       默认只有 auto（箭头），鼠标放上去以为不能点。显式给 pointer 提示可交互。
+       不加在 .left 上：那样放大镜与输入框之间的空隙也会变手形。 */
+    cursor: pointer;
+    background: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23646a73' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='6.9' cy='6.9' r='4.7'/%3E%3Cpath d='M10.5 10.5 14.3 14.3'/%3E%3C/svg%3E") left center / 18px 18px no-repeat;
+  }
+
+  #main-nav #MSearchBox .search-icon::before,
+  #main-nav #MSearchBox .search-icon::after {
+    content: none;
+    display: none;
+  }
+
+  /* scopes 下拉三角：保留它是为了提示"这里可以悬停筛选搜索范围"——去掉后没人知道
+     鼠标放上去有菜单。search.css 原本把它钉在放大镜右上角（top:8px; left:15px），
+     图标放大到 18px 后会直接压在镜片上，所以挪到图标右侧单独竖向居中。
+     上移 1px 是因为放大镜的手柄朝右下伸展，字形视觉重心在圆心上（比盒子中心高
+     约 1.1px），三角对齐盒子中心反而显得偏低。 */
+  #main-nav #MSearchBox .search-icon .search-icon-dropdown {
+    display: block;
+    top: calc(50% - 1px);
+    left: auto;
+    right: 2px;
+    transform: translateY(-50%);
+    border-left-width: 3px;
+    border-right-width: 3px;
+    border-top: 4px solid #7e8791;
+  }
+
+  #main-nav #MSearchField {
+    width: 150px;
+    height: 36px;
+    margin: 0 0 0 8px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 36px;
+    /* 输入的字用正文色；占位符单独压灰，否则两者一个色，分不清是提示还是已输入 */
+    color: #1f2329;
+  }
+
+  #main-nav #MSearchField::placeholder {
+    color: #646a73;
+    opacity: 1;
+  }
+
+  /* 叉号：外层 <a> 继承的 line-height 会把 14px 圆点挤出中线，清零交给 flex 居中 */
+  #main-nav #MSearchClose {
+    line-height: 0;
+  }
+
+  /* 必须是 flex 而不是 block：两条白色斜杠是 ::before/::after 绝对定位、没有 top/left，
+     位置取自"静态位置"，而静态位置由父级的 justify-content / align-items 决定。
+     写成 display:block 后只剩内容盒左上角，叉号就会挤到圆的左上角。 */
+  #main-nav #MSearchCloseImg {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 14px;
+    height: 14px;
+    margin: 0;
+  }
+
+  #main-nav #MSearchCloseImg::before,
+  #main-nav #MSearchCloseImg::after {
+    width: 8px;
+    height: 1.5px;
+  }
+}
+
+/* ---------- 搜索范围弹窗（放大镜旁三角点开的 scopes 菜单） ---------- */
+/* search.css 给它的默认样式是 8pt 字号 + 半透明毛玻璃 + 灰色细边的小面板，
+   和导航下拉完全是两个世界（8pt ≈ 10.7px，只有正文 14px 的 3/4）。
+   这里直接复用导航下拉那套：白底、4px 圆角、浅阴影（同样不描边）、
+   20px/#646a73 的灰字、32px 行高、hover 用同一个 #edeeee 浅灰底色，
+   连左右内边距都对齐 #main-nav .sm-dox ul a(12px / 28px)。
+   这个面板是生成器放在 body 顶层、由 search.js 绝对定位的，不在 #main-nav 里，
+   所以选择器不能带 #main-nav 前缀（移动端的搜索框也要用同一套样式）。 */
+#MSearchSelectWindow {
+  padding: 6px 0;
+  background-color: #fff;
+  border: 0;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#MSearchSelectWindow a.SelectItem {
+  padding: 0 28px 0 12px;
+  font-family: inherit;
+  font-size: 20px;
+  line-height: 32px;
+  color: #646a73;
+}
+
+#MSearchSelectWindow a.SelectItem:hover,
+#MSearchSelectWindow a.SelectItem:focus,
+#MSearchSelectWindow a.SelectItem:active {
+  background-color: #edeeee;   /* 与导航下拉的 hover 同色（实测自 atk-doc） */
+  color: #191919;
+}
+
+/* 选中项前面那个小圆点：预留 1em 宽度，切换范围时后面的文字不会左右跳 */
+#MSearchSelectWindow span.SelectionMark {
+  display: inline-block;
+  width: 1em;
+  margin-right: 2px;
+  font-family: inherit;
+  font-size: inherit;
+  color: #0084ff;
+}
+
+/* ---------- 正文头部区 ---------- */
+/* 页面大标题那一条原来是 #F9FAFC + 深蓝灰下边框，换成白底 + 浅灰下边框，
+   与 atk-doc 的白色正文卡片一致；同时让菜单栏下方 10px 间隔条两侧都是白底，分隔条才看得出来 */
+div.header {
+  background-color: #fff;
+  border-bottom: 1px solid #eff2f5;
+}
+
+/* 左侧树栏同理改白、右边界换成浅灰，避免 10px 间隔条左段糊在 #F9FAFC 底上 */
+#nav-tree {
+  background-color: #fff;
+  border-right: 1px solid #eff2f5;
+}
+
+/* ---------- 首帧布局：先按最终栏宽占位 ---------- */
+/* navtree.js 要等 DOMContentLoaded 才给 #side-nav 量宽、给 #doc-content 写 margin-left。
+   在那之前：正文 margin-left 是 0、左栏宽 0，#container 的两个 auto 轨道也是按
+   「正文 max-content + 右索引栏」分配 —— 正文先按整幅宽从 x=0 排一遍，等脚本跑完
+   再整体右移 256px 并收窄。点左树时会看到页面「先撑满、再闪出左栏」。
+   header.html 在 <head> 里已经把上次拖动的栏宽读进 --atk-nav-width / --atk-page-width，
+   这里按同一套数值先把位置占住，首帧就是最终布局；navtree.js 之后写进内联样式的值
+   与此相同，不会再跳第二次。
+   只在桌面宽度（≥768px，与 Doxygen 自己的布局断点一致）生效：窗口更窄时 navtree.js
+   会按「正文至少 250px」收缩右索引栏、再收缩左栏，那套算法只该在它自己手里跑——
+   这里不复制，免得两边算出不同宽度反而更闪。
+   这套规则假设 GENERATE_TREEVIEW = YES（整个皮肤本来就依赖左树）。 */
+@media (min-width: 768px) {
+  #doc-content {
+    margin-left: var(--atk-nav-width, 256px);
+  }
+
+  #side-nav {
+    width: var(--atk-nav-width, 256px);
+  }
+
+  /* 有右索引栏的页面：第二列钉成 250px，第一列才会像 navtree.js 那样吃满剩余宽度。
+     没有 #page-nav 的页面（文件页 / 索引页）用单列 auto，否则两个 auto 轨道会把正文
+     压到 max-content 宽。 */
+  #container:has(#page-nav) {
+    grid-template-columns: auto var(--atk-page-width, 250px);
+  }
+
+  #container:not(:has(#page-nav)) {
+    grid-template-columns: auto;
+  }
+}
+
+/* ---------- 左侧目录树（参考 atk-doc 侧边栏） ---------- */
+/* 视觉语言照 atk-doc 的 .vp-sidebar（.vuepress/modules/sidebar/styles/）：
+     文字近黑、条目是一条两侧留白的圆角块、hover 铺 #edeeee、
+     选中铺主题蓝 15% + 蓝字、当前项的所有父级也变蓝字、箭头灰 #8f959e。
+   但**不照搬它的行距**：那边每条 38px 高、同级还带 4~8px 间距（一屏 ~19 条），
+   接口文档要一屏多塞几条才方便扫命令，这里压到 26px、条目之间不留缝。
+   字号反过来往上走：Doxygen 默认 12px（.label 上写死的 font: 12px），实际偏小，
+   提到 14px；26px 行高配 14px 字，密度和可读性折中。
+   两个可调旋钮都在下面两条规则里：调高矮改 height/line-height，调大小改 font-size。 */
+#nav-tree {
+  padding: 0;              /* 原 padding-left: 5px，改由条目自身的 margin 承担 */
+}
+
+#nav-tree .item {
+  display: flex;           /* 箭头和文字统一垂直居中，不再靠 line-height 凑 */
+  align-items: center;
+  box-sizing: border-box;
+  height: 26px;
+  margin: 0 8px;           /* 左右 8px：atk-doc 是 10px，这栏只有 256px 宽，收 2px 给正文让位 */
+  padding: 0 6px;
+  border-radius: 6px;
+  cursor: pointer;         /* 整行可点（nav-row-click.js），指针要跟着说这句话 */
+  transition: background-color 0.15s ease;
+}
+
+/* 缩进靠的是 .arrow 的宽度：展开节点是 `padding-left:16*L + width:16px`，
+   叶子节点是 `width:16*(L+1)`，两者在每个层级都相等，所以同一层的文字左沿必须完全对齐。
+   但 .item 一变成 flex 容器，.arrow / .label 就成了 flex item，默认 flex-shrink:1：
+   侧栏一窄、类名一长，浏览器就按比例把它们缩掉（叶子节点没有 padding 撑着，实测能被压到
+   3.3px，缩进直接归零），于是同一层的行左沿参差不齐——这就是窄栏下“层级错位”的原因。
+   Doxygen 原生的处理是整棵树不换行、交给横向滚动条；这里同样禁止收缩，
+   溢出的部分由 #nav-tree 的 overflow-x:auto 横向滚动，缩进永远保持 16px 一级。 */
+#nav-tree .item > * {
+  flex-shrink: 0;
+}
+
+/* 条目之间那 2px 缝。用 li 的上下 padding，而不是 .item 的上下 margin：
+   相邻两个 li 里 .item 的上下 margin 会穿透 li 相互合并（实测 1+1 只得到 1px、行距 27px），
+   padding 不合并，才是稳定的 1+1 = 2px。行距 = 26 + 2 = 28px，一屏 25 条左右。 */
+#nav-tree li {
+  padding: 1px 0;
+}
+
+/* Doxygen 给 .label 写死了 font: 12px 'Lucida Grande',Geneva,…（纯 Latin 字族），
+   中文靠系统兜底，字号也小。改回站点的 system-ui 栈 + 14px。 */
+#nav-tree .label {
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 26px;
+}
+
+#nav-tree .label a {
+  padding: 0;              /* 原 2px，flex 布局里不需要，去掉后文字左沿可对齐 */
+  color: #191919;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+/* Doxygen 1.17 的悬停下划线不是 text-decoration，而是 doxygen.css:240 的
+   `span.label a:hover` 用 linear-gradient 画的一条 1px 背景线（currentColor）。
+   所以必须清掉背景图，只写 text-decoration: none 是没用的。
+   悬停反馈改由整行底色（下面的 .item:hover，atk-doc 的 #edeeee）承担。 */
+#nav-tree .label a:hover,
+#nav-tree .label a:focus {
+  background: none;
+  text-decoration: none;
+}
+
+#nav-tree .item:hover:not(.selected) {
+  background-color: #edeeee;
+}
+
+/* 选中项：atk-doc 用 --theme-color-mask（主题蓝 15% 透明），铺在白底上就是 #DCE6FF。
+   用 rgba 而不是实色，将来换底色也不会穿帮。 */
+#nav-tree .item.selected {
+  background-color: rgba(20, 86, 240, 0.15);
+  border-radius: 6px;
+}
+
+#nav-tree .item.selected .label a {
+  color: #1456f0;
+  font-weight: 500;
+}
+
+/* 选中的是子孙节点时，整条祖先链也变蓝（atk-doc 的 .vp-sidebar-header.active:not(.exact)）。
+   Doxygen 不给祖先加类，用 :has() 反查；不支持 :has() 的浏览器只是少了这层蓝字，其余不受影响。 */
+#nav-tree li:has(.item.selected) > .item:not(.selected) .label a {
+  color: #1456f0;
+}
+
+/* 展开箭头：原来是 5px、边框 #B6C4DF 的细角标，颜色向 atk-doc 的 #8f959e 靠。 */
+#nav-tree span.arrowhead,
+#nav-tree .selected span.arrowhead {
+  border-right-color: #8f959e;
+  border-bottom-color: #8f959e;
+  margin: 0;
+}
+
+/* .arrow 本身是 inline-block 14px 高的行内盒，里面的 5px 箭头按行盒基线落位，
+   实测比行中心高 3.5px（行中心 79，箭头中心 75.5）。改成 flex 居中后箭头落在正中间；
+   顺带把 16px 的箭头槽也用 justify-content 居中，而不是靠 margin-left 硬推。 */
+#nav-tree span.arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 这个箭头是用右边框+下边框转 45° 拼出来的，墨迹天然偏向“指向”的那一侧：
+   > 的墨迹比盒子中心右 3.55px，v 的墨迹比盒子中心下 1.36px（都实测过）。
+   上面 flex 居中的是盒子，所以这里按方向补回来，让两种状态的“墨迹中心”都落在
+   箭头槽中心 / 行中心上：补的是相对定位，只挪绘制不挪布局，文字不会跟着动。
+   补完展开/收起时墨迹原地翻转，不会左右或上下跳。 */
+#nav-tree span.arrowhead.closed {
+  left: -3.5px;
+}
+
+#nav-tree span.arrowhead.opened {
+  top: -1.4px;
+}
+
+#nav-tree .item:hover .arrowhead {
+  border-right-color: #6b7280;
+  border-bottom-color: #6b7280;
+}
+
+/* ---------- 三栏滚动条 ---------- */
+/* 三个可滚动容器（左树 #nav-tree、正文 #doc-content、右索引 #page-nav-contents）
+   都已经是 scrollbar-width: thin（见 navtree.css / doxygen.css），Chrome 下 thin 实测 10px。
+   这里只改配色：滑块平时透明，轨道恒为 #eff2f5 的浅灰带，于是三栏各有一条安静的
+   竖带做分隔；指针进到哪一栏，那一栏的滑块才显形（atk-doc 侧栏就是这套观感）。
+   用标准的 scrollbar-color 而不是 ::-webkit-scrollbar——Chrome 121+ 一旦设了
+   scrollbar-width/scrollbar-color，::-webkit-scrollbar-* 整组会被忽略，伪元素那条路走不通。 */
+#nav-tree,
+#doc-content,
+#page-nav-contents {
+  scrollbar-color: transparent rgb(239, 242, 245);
+}
+
+/* 滑块：#d5dae0 = rgb(213, 218, 224)，比轨道深一档但不抢眼。
+   悬停热区就是容器本身，所以指针移到轨道上时滑块已经可见，拖拽手感不变。 */
+#nav-tree:hover,
+#doc-content:hover,
+#page-nav-contents:hover {
+  scrollbar-color: rgb(213, 218, 224) rgb(239, 242, 245);
+}
+
+/* 前两栏常驻：Doxygen 给它们的是 overflow: auto，内容不满一屏时整条轨道会消失，
+   版面会左右跳 10px。改成 scroll 让 #eff2f5 的轨道带始终占位（滑块仍然只在悬停时出现）。 */
+#nav-tree,
+#doc-content {
+  overflow-y: scroll;
+}
+
+/* 右索引栏不常驻：#page-nav 只在类页/目录页出现，文件页、索引页只有两栏，
+   所以这一栏跟着内容走——有溢出才出滚动条，没有就完全不留白。 */
+#page-nav-contents {
+  overflow-y: auto;
+}
+
+/* ---------- 顶部导航栏 · 面板同步开关（#nav-sync） ---------- */
+/* Doxygen 原来把它生成在左树 #nav-tree-contents 的最上面（absolute; top:0;
+   right:0），正好压在树的第一条目录上，鼠标扫过时盖住条目文字。
+   nav-sync-dock.js 把它挪进当前可见的导航栏、钉在搜索框左边：宽屏是 #main-nav
+   （渐变蓝标题栏），窄屏是 #main-nav-mobile（白底收起栏），所以图标有白色/灰色两套。
+   坐标写在外层 .atk-nav-sync 上：navtree.js 的 adjustSyncIconPosition() 会按滚动条
+   宽度改写 #nav-sync 自己的 style.right，直接给 #nav-sync 写坐标会被覆盖。 */
+
+/* 窄屏那条导航栏本身没有定位上下文，容器需要它做绝对定位的参照 */
+#main-nav-mobile {
+  position: relative;
+}
+
+.atk-nav-sync {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  /* 必须压在菜单容器 .sm / .sm-dox 的 z-index:9999 之上：那条 <ul> 在两条导航栏里
+     都铺满整行（透明底，看不见），层级不够高时鼠标点到的永远是它——按钮看得见、
+     hover 没反应、点击也进不去。窄屏还叠加一层白底，压不住就直接被盖掉。 */
+  z-index: 10000;
+  transform: translateY(-50%);
+}
+
+/* 图标不用 Doxygen 原生那两个外扩尖角：它脱离左树的白底小方块后，在渐变栏上只剩
+   一个「<>」，容易被当成源码/代码符号。这里换成 ⇄（两根反向箭头），状态靠不透明度
+   区分；提示气泡由 nav-sync-dock.js 自绘（见下面 .atk-nav-sync__tip）。 */
+.atk-nav-sync #nav-sync {
+  position: static;              /* 压掉 navtree.css 的 absolute 与脚本写的 right */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23646a73' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.2 5.6H2.8M10.9 2.9l2.5 2.7-2.5 2.7'/%3E%3Cpath d='M2.8 10.4h10.4M5.1 7.7l-2.5 2.7 2.5 2.7'/%3E%3C/svg%3E");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 20px 20px;
+  opacity: 0.55;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+/* navtree.js 直接把 .sync 加在 #nav-sync 上：有它是开启（默认），没有是已暂停 */
+.atk-nav-sync #nav-sync.sync,
+.atk-nav-sync #nav-sync:hover,
+.atk-nav-sync #nav-sync:focus-visible {
+  opacity: 1;
+}
+
+.atk-nav-sync #nav-sync:hover {
+  background-color: rgb(0 0 0 / 6%);
+}
+
+.atk-nav-sync #nav-sync:focus-visible {
+  outline: 2px solid #1456f0;
+  outline-offset: 2px;
+}
+
+/* 原生那层图标（含 navtree.js 写在它 title 上的 tooltip）保留下来当热区：
+   铺满整个按钮但完全透明，于是鼠标在按钮任意位置都能看到「点击 关闭/开启 面板同步」。 */
+.atk-nav-sync div.nav-sync-icon,
+.atk-nav-sync div.nav-sync-icon:hover {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  background-color: transparent;
+  opacity: 0;
+}
+
+/* 自绘提示气泡。navtree.js 原本只在内部图标上留了个 title，原生 tooltip 要悬停一秒
+   才出来，而且只说「点击 关闭 面板同步」，看不出这块开关管的是什么；那层图标又被
+   压成透明热区，原生提示时灵时不灵。气泡由 nav-sync-dock.js 生成，文字随 .sync 状态
+   改写：标题写当前状态，说明写点下去会发生什么。 */
+.atk-nav-sync__tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: rgb(28 32 38 / 96%);
+  box-shadow: 0 6px 18px rgb(15 23 42 / 20%);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;              /* 气泡不该挡住按钮本身的热区 */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  /* 隐藏时让 visibility 延到淡出结束再切，显示时立刻生效 */
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0s linear 0.12s;
+}
+
+.atk-nav-sync__tip b {
+  font-weight: 600;
+}
+
+.atk-nav-sync__tip span {
+  font-size: 11px;
+  color: rgb(255 255 255 / 74%);
+}
+
+/* 悬停与键盘聚焦都出提示（按钮本身 tabindex=0，:focus-within 顺带覆盖内部热区） */
+.atk-nav-sync:hover .atk-nav-sync__tip,
+.atk-nav-sync:focus-within .atk-nav-sync__tip {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atk-nav-sync__tip {
+    transition: none;
+  }
+}
+
+@media (min-width: 768px) {
+  /* right 的实际值由 nav-sync-dock.js 按搜索框位置改写，这里只是脚本算出坐标前的默认值 */
+  .atk-nav-sync {
+    right: 2rem;
+  }
+
+  /* 渐变蓝标题栏上用白图标 */
+  .atk-nav-sync #nav-sync {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.2 5.6H2.8M10.9 2.9l2.5 2.7-2.5 2.7'/%3E%3Cpath d='M2.8 10.4h10.4M5.1 7.7l-2.5 2.7 2.5 2.7'/%3E%3C/svg%3E");
+  }
+
+  .atk-nav-sync #nav-sync:hover {
+    background-color: rgb(255 255 255 / 16%);
+  }
+
+  .atk-nav-sync #nav-sync:focus-visible {
+    outline-color: #fff;
+  }
+
+  /* 标题栏 60px 高，按钮上下各 12px；气泡再往下 12px 正好从栏底探出，不压住栏边 */
+  .atk-nav-sync__tip {
+    top: calc(100% + 12px);
+  }
+}
+
+/* ---------- 页脚：隐藏 Doxygen 的「制作者 …」署名 ---------- */
+/* 这行署名是生成器写死在每个页面末尾 #nav-path 里的（<li class="footer">制作者
+   <img class="footer" src="doxygen.svg"> 1.17.0</li>），HTML_FOOTER 没启用，模板改不到，
+   只能按 Doxygen 默认类压掉。
+   只藏 <li> 的话，只含署名的页面（概览、类列表、文件列表、主题…）会剩一条 30px 高的
+   空白面包屑条（#nav-path ul 自带白底 + 下描边），所以没有路径条目时整条一起隐藏；
+   类页 / 源码页底部的路径行照旧保留。 */
+#nav-path li.footer {
+  display: none;
+}
+
+#nav-path:not(:has(li.navelem)) {
+  display: none;
+}
+
+/* ---------- 文档页面插图（\image） ---------- */
+/* Doxygen 只给 .image 加了居中，没有限制图片宽度。二次开发操作流程里的截图按原始像素
+   输出（最宽 1270px），窗口一窄就把正文撑出横向滚动条，所以统一按正文宽度等比缩放。
+   图注（.caption）仍用 Doxygen 默认样式。 */
+.image img {
+  max-width: 100%;
+  height: auto;
+}
