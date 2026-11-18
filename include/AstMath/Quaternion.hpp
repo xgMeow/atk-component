@@ -1,0 +1,184 @@
+﻿/// @file      Quaternion.hpp
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      15.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstMath/MathOperator.hpp"
+#include "AstMath/Matrix.hpp"
+#include "AstMath/AttitudeConvertProto.hpp"
+#include <string>
+
+AST_NAMESPACE_BEGIN
+
+class Quaternion;
+
+/*!
+    @addtogroup Attitude
+	@{
+*/
+
+/// @brief 四元数乘积
+/// @param q1 四元数1
+/// @param q2 四元数2
+/// @return 四元数乘积
+Quaternion aQuatProduct(const Quaternion& q1, const Quaternion& q2);
+
+
+/// @brief 四元数
+/// @ingroup Attitude
+class Quaternion
+{
+public:
+	/// @brief 创建单位四元数
+	static Quaternion Identity(){return Quaternion{1,0,0,0};}
+
+	/// @brief 从旋转矩阵创建四元数
+	/// @param mtx 旋转矩阵
+	/// @return 四元数
+	static Quaternion FromRotationMatrix(const Matrix3d& mtx){return aMatrixToQuat(mtx);}
+
+	/// @brief 计算四元数的范数
+	/// @return 四元数的范数
+	double norm() const{return _ASTMATH norm(*this); }
+	/// @brief 归一化四元数
+	void normalize(){ _ASTMATH normalize(*this); }
+	/// @brief 归一化四元数
+	/// @return 归一化四元数
+	Quaternion normalized() const{return _ASTMATH normalized(*this);}
+	/// @brief 设置四元数为单位四元数
+	void setIdentity(){ *this = {1,0,0,0};}
+	/// @brief 四元数的实部
+	double qs() const{return qs_;}
+	/// @brief 四元数的虚部x
+	double qx() const{return qx_;}
+	/// @brief 四元数的虚部y
+	double qy() const{return qy_;}
+	/// @brief 四元数的虚部z
+	double qz() const{return qz_;}
+	/// @brief 四元数的实部
+	double& qs(){return qs_;}
+	/// @brief 四元数的虚部x
+	double& qx(){return qx_;}
+	/// @brief 四元数的虚部y
+	double& qy(){return qy_;}
+	/// @brief 四元数的虚部z
+	double& qz(){return qz_;}
+	/// @brief 四元数的虚部向量
+	const Vector3d& vec() const {return (const Vector3d&)qx_;}
+
+public:
+	// 兼容Eigen接口
+
+	/// @brief 四元数的虚部x
+	double x() const{return qx_;}
+	/// @brief 四元数的虚部y
+	double y() const{return qy_;}
+	/// @brief 四元数的虚部z
+	double z() const{return qz_;}
+	/// @brief 四元数的实部
+	double w() const{return qs_;}
+
+	/// @brief 四元数的虚部x
+	double& x(){return qx_;}
+	/// @brief 四元数的虚部y
+	double& y(){return qy_;}
+	/// @brief 四元数的虚部z
+	double& z(){return qz_;}
+	/// @brief 四元数的实部
+	double& w(){return qs_;}
+
+	A_DEF_POD_ITERABLE(double)
+public:
+	/// @brief 计算四元数的平方范数
+	/// @return 四元数的平方范数
+	double squaredNorm() const{return _ASTMATH squaredNorm(*this);}
+
+
+	/// @brief 计算四元数的共轭
+	/// @return 四元数的共轭
+	Quaternion conjugate() const{return {qs(), -qx(), -qy(), -qz()};}
+
+	/// @brief 计算四元数的逆
+	/// @return 四元数的逆
+	Quaternion inverse() const{return conjugate() / squaredNorm();}
+
+
+	/// @brief 四元数乘积
+	/// @param q2 四元数2
+	/// @return 四元数乘积
+	Quaternion operator*(const Quaternion& q2) const{return aQuatProduct(*this, q2);}
+
+	/// @brief 四元数乘积赋值
+	/// @param q2 四元数2
+	/// @return 四元数乘积赋值
+	Quaternion& operator*=(const Quaternion& q2){return *this = aQuatProduct(*this, q2);}
+
+
+	/// @brief 四元数标量乘积
+	/// @param val 标量
+	/// @return 四元数标量乘积
+	Quaternion operator*(double val) const{ Quaternion v{*this}; v *= val; return v;}
+
+	/// @brief 四元数标量乘积赋值
+	/// @param val 标量
+	/// @return 四元数标量乘积赋值
+	Quaternion& operator*=(double val){qs() *= val; qx() *= val; qy() *= val; qz() *= val; return *this;}
+
+
+	/// @brief 四元数标量除法
+	/// @param val 标量
+	/// @return 四元数标量除法
+	Quaternion operator/(double val) const{ Quaternion v{*this}; v /= val; return v;}
+
+	/// @brief 四元数标量除法赋值
+	/// @param val 标量
+	/// @return 四元数标量除法赋值
+	Quaternion& operator/=(double val){qs() /= val; qx() /= val; qy() /= val; qz() /= val; return *this;}
+public:
+	/// @brief 四元数转旋转矩阵
+	/// @return 旋转矩阵
+	Matrix3d toRotationMatrix() const{
+		Matrix3d mtx;
+		aQuatToMatrix(*this, mtx);
+		return mtx;
+	}
+public:
+	AST_MATH_API
+	std::string toString() const;
+public:
+	// 设置为public仅为实现聚合初始化，不要直接访问成员变量
+	double qs_;
+	double qx_;
+	double qy_;
+	double qz_;
+};
+
+
+/// @brief 四元数乘积
+/// @param q1 四元数1
+/// @param q2 四元数2
+/// @return 四元数乘积
+inline Quaternion aQuatProduct(const Quaternion& q1, const Quaternion& q2)
+{
+	return {
+		q1.qs() * q2.qs() - q1.qx() * q2.qx() - q1.qy() * q2.qy() - q1.qz() * q2.qz(),
+		q1.qs() * q2.qx() + q1.qx() * q2.qs() + q1.qy() * q2.qz() - q1.qz() * q2.qy(),
+		q1.qs() * q2.qy() - q1.qx() * q2.qz() + q1.qy() * q2.qs() + q1.qz() * q2.qx(),
+		q1.qs() * q2.qz() + q1.qx() * q2.qy() - q1.qy() * q2.qx() + q1.qz() * q2.qs(),
+	};
+}
+
+
+
+/*! @} */
+
+AST_NAMESPACE_END
+
+#include "AttitudeConvertInline.hpp"
+
+
+AST_DECL_TYPE_ALIAS(Quaternion)

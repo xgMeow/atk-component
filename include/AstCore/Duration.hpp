@@ -1,0 +1,129 @@
+﻿/// @file      Duration.hpp
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      21.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/Constants.hpp"
+#include <stdint.h>     // for int64_t
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup Time
+    @{
+*/
+
+
+
+/// @brief 短时长
+class ShortDuration
+{
+public:
+    double second() const{return second_;}
+    double& second(){return second_;}
+public:
+    double second_;         // 秒数
+};
+
+
+/// @brief 长时长
+class LongDuration
+{
+public:
+    /// @brief 获取整数秒部分
+    int64_t integer() const{return integer_;}
+    int64_t& integer(){return integer_;}
+
+    /// @brief 获取小数秒部分
+    double fractional() const{return fractional_;}
+    double& fractional(){return fractional_;}
+
+    /// @brief 时长减法运算符
+    /// @param other 另一个时长
+    /// @return 两个时长的差值（秒数）
+    double operator-(const LongDuration& other) const{
+        return minusInSecond(other);
+    }
+
+    /// @brief 时长减法方法（秒）
+    /// @param other 另一个时长
+    /// @return 两个时长的差值（秒数）
+    double minusInSecond(const LongDuration& other) const{
+        return (integer_ - other.integer_) + (fractional_ - other.fractional_);
+    }
+
+    /// @brief 时长减法方法（分钟）
+    /// @param other 另一个时长
+    /// @return 两个时长的差值（分钟数）
+    double minusInMinute(const LongDuration& other) const{
+        return (integer_ - other.integer_) / kSecondsPerMinute + (fractional_ - other.fractional_) / kSecondsPerMinute;
+    }
+
+    double minusInHour(const LongDuration& other) const{
+        return (integer_ - other.integer_) / kSecondsPerHour + (fractional_ - other.fractional_) / kSecondsPerHour;
+    }
+
+    /// @brief 时长减法方法（天）
+    /// @param other 另一个时长
+    /// @return 两个时长的差值（天数）
+    double minusInDay(const LongDuration& other) const{
+        return (integer_ - other.integer_) / kSecondsPerDay + (fractional_ - other.fractional_) / kSecondsPerDay;
+    }
+
+    /// @warning 
+    /// 注意：totalSecond() 方法返回的是一个不精确的double值，
+    /// 计算会引入舍入误差。且不考虑闰秒等因素。
+    /// @return 总秒数（整数天秒数 + 小数秒数）
+    double totalSecond() const{return (integer_ + fractional_);}
+
+    /// @brief 转换为秒数
+    /// @return 总秒数（整数天秒数 + 小数秒数）
+    operator double() const{return totalSecond();}
+
+public:
+    int64_t integer_;       // 整数秒部分
+    double  fractional_;    // 小数秒部分
+};
+
+
+/// @brief 整数天 + 小数秒时长（也能解决长时长问题）
+class DaySecDuration
+{
+public:
+    /// @brief 获取整数天部分
+    int day() const{return day_;}
+    int& day(){return day_;}
+
+    /// @brief 获取小数部分的秒数
+    double second() const{return second_;}
+    double& second(){return second_;}
+
+    /// @warning 
+    /// 注意：totalSecond() 方法返回的是一个不精确的double值，
+    /// 计算会引入舍入误差。且不考虑闰秒等因素。
+    /// @return 总秒数（整数天秒数 + 小数秒数）
+    double totalSecond() const{return day_ * 86400.0 + second_;}
+
+    /// @warning 
+    /// 注意：totalDay() 方法返回的是一个不精确的double值，
+    /// 计算会引入舍入误差。且不考虑闰秒等因素。
+    /// @return 总天数（整数天部分 + 小数部分）
+    double totalDay() const{return day_ + second_ / 86400.0;}
+
+    /// @brief 转换为秒数
+    /// @return 总秒数（整数天秒数 + 小数秒数）
+    operator double() const{return totalSecond();}
+public:
+    int    day_;            // 整数天部分
+    double second_;         // 小数秒部分
+};
+
+
+/*! @} */
+
+AST_NAMESPACE_END
+

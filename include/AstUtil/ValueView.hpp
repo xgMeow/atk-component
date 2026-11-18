@@ -1,0 +1,252 @@
+﻿/// @file      ValueView.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-01-08
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/StringView.hpp"
+#include "AstUtil/ParseFormat.hpp"
+#include "AstUtil/Color.hpp"
+#include "AstUtil/GenericValue.hpp"
+#include "AstUtil/StringSplit.hpp"
+#include "AstUtil/StringUtil.hpp"
+#include "AstUtil/Math.hpp"
+
+AST_NAMESPACE_BEGIN
+
+class ByCommaAndRepeatedWhitespace;
+struct SkipBracket;
+
+/// @brief 值视图类
+/// @brief 提供对值的视图操作，包括解析和格式化值。
+/// @ingroup ParseFormat
+class ValueView
+{
+public:
+    ValueView() = default;
+    // explicit 
+    ValueView(StringView value)
+        : value_(value){}
+    explicit ValueView(const char* value)
+        : value_(value){}
+    // explicit 
+    ValueView(const std::string& value)
+        : value_(value){}
+    // explicit 
+    ValueView(const GenericValue& value)
+        : value_(value.value()) {}
+    ValueView(std::nullptr_t)
+        : value_() {}
+
+    /// @brief 获取值视图
+    const StringView& value() const { return value_; }
+    StringView& value() { return value_; }
+
+    /// @brief 转换为整数
+    int toInt() const { return aParseInt(value_); }
+    errc_t toInt(int& value) const { return aParseInt(value_, value); }
+
+    /// @brief 转换为浮点数，不支持 Fortran 格式浮点数
+    double toDouble() const { return aParseDouble(value_); }
+    errc_t toDouble(double& value) const { return aParseDouble(value_, value); }
+
+    /// @brief 转换为弧度
+    /// @details 将读取的浮点是从角度转换为弧度
+    angle_d toAngleRad() const {return deg2rad(toDouble());}
+    errc_t toAngleRad(angle_d& value) const {errc_t rc= aParseDouble(value_, value); value=deg2rad(value); return rc;}
+
+    /// @brief 转换为浮点数，支持 Fortran 格式浮点数，例如 "1.23D2"，"-1.23d3"
+    double toFortranDouble() const { return aParseFortranDouble(value_); }
+    errc_t toFortranDouble(double& value) const { return aParseFortranDouble(value_, value); }
+
+    /// @brief 转换为布尔值
+    bool toBool() const { return aParseBool(value_); }
+    errc_t toBool(bool& value) const { return aParseBool(value_, value); }
+
+    /// @brief 转换为颜色值
+    Color toColor() const { return aParseColor(value_); }
+    errc_t toColor(Color& value) const { return aParseColor(value_, value); }
+
+    /// @brief 转换为字符串
+    std::string toString() const { return std::string(value_); }
+    void toString(std::string& value) const { value = std::string(value_); }
+
+    /// @brief 转换为值视图向量
+    std::vector<ValueView> toVector() const;
+    void toVector(std::vector<ValueView>& value) const;
+
+    /// @brief 转换为浮点数向量，支持 Fortran 格式浮点数，例如 "1.23D2"，"-1.23d3"
+    std::vector<double> toFortranDoubleVector() const;
+    errc_t toFortranDoubleVector(std::vector<double>& value) const;
+
+    /// @brief 转换为浮点数向量
+    std::vector<double> toDoubleVector() const;
+    errc_t toDoubleVector(std::vector<double>& value) const;
+
+    /// @brief 转换为整数向量
+    std::vector<int> toIntVector() const;
+    errc_t toIntVector(std::vector<int>& value) const;
+
+    /// @brief 转换为字符串视图
+    const StringView& toStringView() const { return value_; }
+
+    /// @brief 转换为通用值
+    GenericValue toValue() const { return GenericValue(value_); }
+
+    operator StringView() const { return value_; }
+
+    const char* data() const { return value_.data(); }
+    size_t size() const { return value_.size(); }
+
+    using SplitterType = Splitter<ByCommaAndRepeatedWhitespace, SkipBracket>;
+    SplitterType split() const;
+
+    template<typename Delimiter>
+    inline strings_internal::Splitter<typename strings_internal::SelectDelimiter<Delimiter>::type, strings_internal::AllowEmpty, StringView>
+    split(Delimiter delimiter) const { 
+        using DelimiterType = typename strings_internal::SelectDelimiter<Delimiter>::type;
+        return strings_internal::Splitter<DelimiterType, strings_internal::AllowEmpty, StringView>(
+        value_, DelimiterType(delimiter), strings_internal::AllowEmpty());
+    }
+public:
+    StringView  value_{};
+};
+
+
+inline std::vector<ValueView> ValueView::toVector() const
+{
+    std::vector<ValueView> value;
+    this->toVector(value);
+    return value;
+}
+
+
+/// @brief 逗号和重复空格分隔符
+class ByCommaAndRepeatedWhitespace {
+public:
+    StringView Find(StringView text, size_t pos) const {
+        while (pos < text.size()) {
+            char c = text[pos];
+            // 情况1：当前字符是空白
+            if (std::isspace(static_cast<unsigned char>(c))) {
+                size_t whitespace_start = pos;
+                // 跳过连续空白
+                while (pos < text.size() && std::isspace(static_cast<unsigned char>(text[pos]))) {
+                    ++pos;
+                }
+                // 检查空白之后是否是逗号
+                if (pos < text.size() && text[pos] == ',') {
+                    // 空白后紧跟逗号，继续跳过逗号后的空白
+                    ++pos; // 跳过逗号
+                    while (pos < text.size() && std::isspace(static_cast<unsigned char>(text[pos]))) {
+                        ++pos;
+                    }
+                }
+                return text.substr(whitespace_start, pos - whitespace_start);
+            }
+
+            // 情况2：当前字符是逗号
+            if (c == ',') {
+                size_t comma_start = pos;
+                ++pos; // 跳过逗号
+                // 跳过逗号后的空白
+                while (pos < text.size() && std::isspace(static_cast<unsigned char>(text[pos]))) {
+                    ++pos;
+                }
+                // 返回从逗号开始到其后空白结束的序列
+                return text.substr(comma_start, pos - comma_start);
+            }
+
+            // 其他字符，继续向后查找
+            ++pos;
+        }
+        // 未找到任何分隔符，返回文本末尾的空视图
+        return StringView(text.data() + text.size(), 0);
+    }
+};
+
+/// @brief 跳过括号
+struct SkipBracket
+{
+    bool operator()(StringView& text) const
+    {
+        if (text.size() == 1) {
+            if (text[0] == '(' || text[0] == ')') {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+inline void ValueView::toVector(std::vector<ValueView>& value) const
+{
+    value = split().operator std::vector<ValueView>();
+}
+
+inline std::vector<double> ValueView::toFortranDoubleVector() const
+{
+    std::vector<double> value;
+    this->toFortranDoubleVector(value);
+    return value;
+}
+
+inline errc_t ValueView::toFortranDoubleVector(std::vector<double> &value) const
+{
+    for (auto& v : split()) {
+        double d;
+        if (errc_t rc = ValueView(v).toFortranDouble(d)) {
+            return rc;
+        }
+        value.push_back(d);
+    }
+    return eNoError;
+}
+
+inline std::vector<double> ValueView::toDoubleVector() const
+{
+    std::vector<double> value;
+    this->toDoubleVector(value);
+    return value;
+}
+
+inline errc_t ValueView::toDoubleVector(std::vector<double> &value) const
+{
+    for (auto& v : split()) {
+        double d;
+        if (errc_t rc = ValueView(v).toDouble(d)) {
+            return rc;
+        }
+        value.push_back(d);
+    }
+    return eNoError;
+}
+
+inline std::vector<int> ValueView::toIntVector() const
+{
+    std::vector<int> value;
+    this->toIntVector(value);
+    return value;
+}
+
+inline errc_t ValueView::toIntVector(std::vector<int>& value) const
+{
+    for (auto& v : split()) {
+        int i;
+        if (errc_t rc = ValueView(v).toInt(i)) {
+            return rc;
+        }
+        value.push_back(i);
+    }
+    return eNoError;
+}
+
+inline ValueView::SplitterType ValueView::split() const
+{
+    return aStrSplit(aStripAsciiWhitespace(value_), ByCommaAndRepeatedWhitespace(), SkipBracket());
+}
+
+AST_NAMESPACE_END

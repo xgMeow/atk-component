@@ -1,0 +1,201 @@
+﻿/// @file      Vector.hpp
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      15.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstMath/MathOperator.hpp"
+#include "AstUtil/Constants.hpp"
+#include <stdlib.h>    // for malloc
+#include <string>      // for std::string
+#include <string.h>    // for memset
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @ingroup Math
+    @defgroup Array 向量矩阵
+    @brief  提供向量矩阵相关的函数
+*/
+
+/*!
+    @addtogroup Array
+    @{
+*/
+
+template<typename _Scalar, size_t N>
+class VectorN;
+
+
+#define _AST_DEF_VECTOR_METHOD(Scalar)                                                  \
+    A_DEF_POD_ITERABLE(Scalar)                                                          \
+    Scalar operator()(size_t idx) const{return data()[idx];}                            \
+    Scalar& operator()(size_t idx) {return data()[idx];}                                \
+    Scalar& x() {return data()[0];}                                                     \
+    Scalar& y() {return data()[1];}                                                     \
+    Scalar& z() {return data()[2];}                                                     \
+    Scalar x() const {return data()[0];}                                                \
+    Scalar y() const {return data()[1];}                                                \
+    Scalar z() const {return data()[2];}                                                \
+
+
+
+template<typename _Scalar, size_t N>
+class VectorN
+{
+public:
+    typedef _Scalar Scalar;
+    enum {Dimension = N};
+    _AST_DEF_VECTOR_METHOD(Scalar);
+public:
+    Scalar m_data[N]; // 不要直接访问m_data，设为public仅为了实现聚合初始化
+};
+
+
+template<typename _Scalar>
+class VectorN<_Scalar, 3>
+{
+public:
+    typedef VectorN<_Scalar, 3> Self;
+    typedef _Scalar Scalar;
+    enum {Dimension = 3};
+    #if defined(SWIG)
+    VectorN()
+        :x_(0), y_(0), z_(0){}
+    VectorN(double x, double y, double z)
+        :x_(x), y_(y), z_(z){}
+    #endif
+    #ifdef AST_BUILD_LIB_PY
+    void __setitem__(size_t idx, _Scalar v){data()[idx] = v;}
+    #endif
+
+    static Self Zero(){return Self{0,0,0}; }
+    static Self UnitX() {return Self{1,0,0}; }
+    static Self UnitY() {return Self{0,1,0}; }
+    static Self UnitZ() {return Self{0,0,1}; }
+    static double Angle(const Self& v1, const Self & v2);
+    _Scalar at(size_t idx) const{return data()[idx]; }
+    _Scalar& at(size_t idx) {return data()[idx]; }
+    double normalize(){return _ASTMATH normalize(*this);}
+    Self normalized() const{return _ASTMATH normalized(*this);}
+    double norm() const{return _ASTMATH norm(*this);}
+    double squaredNorm() const{return _ASTMATH squaredNorm(*this);}
+    Self cross(const Self& other) const{return _ASTMATH cross(*this, other);}
+    double angle(const Self& other) const{return Angle(*this, other);}
+    double dot(const Self& other) const{return _ASTMATH dot(*this, other);}
+    void setZero(){x_ = y_ = z_ = 0;}
+    Self& operator*=(Scalar s){return *this = _ASTMATH operator*(*this, s);}
+    Self operator*(Scalar s) const{return _ASTMATH operator*(*this, s);}
+    Self operator/(Scalar s) const{return _ASTMATH operator/(*this, s);}
+    Self operator-() const{return Self{-x_, -y_, -z_};}
+    Self operator-(const Self& other) const{return _ASTMATH operator-(*this, other);}
+    Self operator+(const Self& other) const{return _ASTMATH operator+(*this, other);}
+    Self& operator+=(const Self& other){return *this = _ASTMATH operator+(*this, other);}
+    std::string toString() const;
+    _AST_DEF_VECTOR_METHOD(Scalar);
+public:
+    _Scalar x_, y_, z_; // 不要直接访问数据，设为public仅为了实现聚合初始化
+};
+
+
+template<typename _Scalar>
+class VectorX
+{
+public:
+    VectorX();
+    VectorX(size_t size);
+
+    VectorX(const VectorX&) = delete;
+    VectorX& operator=(const VectorX&) = delete;
+
+    ~VectorX();
+
+    void resize(size_t size);
+    void setZero();
+    A_DEF_ITERABLE(_Scalar, data_, size_)
+private:
+    _Scalar* data_{nullptr};
+    size_t   size_{0};
+};
+
+
+/// inlines
+
+
+template<typename _Scalar>
+inline double VectorN<_Scalar, 3>::Angle(const Self& v1, const Self & v2)
+{
+    double normProduct = v1.norm() * v2.norm();
+    if (normProduct == 0) {
+        return 0;
+    }
+
+    double dot = v1.dot(v2);
+    double threshold = normProduct * 0.9999;
+    if ((dot < -threshold) || (dot > threshold)) {
+        Self v3 = v1.cross(v2);
+        if (dot >= 0) {
+            return asin(v3.norm() / normProduct);
+        }
+        return kPI - asin(v3.norm() / normProduct);
+    }
+
+    return acos(dot / normProduct);
+}
+
+template<typename _Scalar>
+inline VectorX<_Scalar>::VectorX()
+    : data_{nullptr}
+    , size_{0}
+{
+}
+
+template<typename _Scalar>
+inline VectorX<_Scalar>::VectorX(size_t size)
+    : data_((_Scalar*)malloc(sizeof(_Scalar)* size))
+    , size_{size}
+{
+    setZero();
+}
+
+
+template<typename _Scalar>
+inline VectorX<_Scalar>::~VectorX()
+{
+    if(data_)
+        free(data_);
+}
+
+template<typename _Scalar>
+inline void VectorX<_Scalar>::resize(size_t size)
+{
+    if (size > size_)
+    {
+        if(data_)
+            free(data_);
+        data_ = (_Scalar*)malloc(sizeof(_Scalar) * size);
+    }
+    size_ = size;
+}
+
+template <typename _Scalar>
+inline void VectorX<_Scalar>::setZero()
+{
+    if(data_)
+        memset(data_, 0, sizeof(_Scalar) * size_);
+}
+
+typedef VectorX<double> VectorXd;
+
+
+/*! @} */
+
+AST_NAMESPACE_END
+
+
+AST_DECL_TYPE_ALIAS(Vector3d)
+AST_DECL_TYPE_ALIAS(VectorXd)
+

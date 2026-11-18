@@ -1,5 +1,5 @@
-# 外部依赖头文件（不入库）
-/include/
+# 说明：include/（从 ATK SDK IntegratingWithATK/component/include 拷来的接口头文件）
+# 已纳入版本控制 —— 流水线要能在干净检出上直接生成文档，见 .gitea/workflows/docs.yml
 
 # Doxygen 生成的文档产物（不入库）
 /.dist/

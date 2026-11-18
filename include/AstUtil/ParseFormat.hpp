@@ -1,0 +1,357 @@
+﻿/// @file      ParseFormat.hpp
+/// @brief     解析和格式化字符串
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2025-12-10
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/StringView.hpp"
+#include "AstUtil/Logger.hpp"
+#include "AstUtil/Color.hpp"
+#include <string>
+
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @ingroup Util
+    @defgroup ParseFormat 文本解析和格式化
+    @brief 提供字符串解析和格式化的功能，包括将字符串转换为布尔值、整数、双精度浮点数等，以及解析格式化文件内容。
+*/
+
+/*!
+    @addtogroup ParseFormat
+    @{
+*/
+
+/// @brief 将字符串转换为布尔值
+/// @param str 输入字符串
+/// @param value 输出布尔值
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aParseBool(StringView str, bool& value);
+
+
+/// @brief 将字符串转换为整数
+/// @param str 输入字符串
+/// @param value 输出整数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aParseInt(StringView str, int& value);
+
+
+/// @brief 内部函数，将字符串转换为整数（基于C标准库函数）
+/// @param str 输入字符串
+/// @param value 输出整数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseInt_LibC_1(StringView str, int& value);      // 基于 strtol 函数(stol函数)，堆内存
+AST_UTIL_CAPI errc_t _aParseInt_LibC_2(StringView str, int& value);      // 基于 atoi 函数
+AST_UTIL_CAPI errc_t _aParseInt_LibC_3(StringView str, int& value);      // 基于 strtol 函数(stol函数)，栈内存
+
+
+#ifdef A_CXX17
+AST_UTIL_CAPI errc_t _aParseInt_FromChars(StringView str, int& value);    // 基于 std::from_chars 函数
+#endif
+
+
+/// @brief 内部函数，将字符串转换为整数（简单实现）
+/// @param str 输入字符串
+/// @param value 输出整数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseInt_Simple(StringView str, int& value);
+
+
+/// @brief 内部函数，将字符串转换为整数（基于 stringstream 流解析）
+/// @param str 输入字符串
+/// @param value 输出整数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseInt_StringStream(StringView str, int& value);
+
+
+/// @brief 内部函数，将字符串转换为整数（基于 scanf 函数）
+/// @param str 输入字符串
+/// @param value 输出整数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseInt_Scanf(StringView str, int& value);      // 基于 scanf 函数
+
+
+/// @brief 将字符串转换为双精度浮点数
+/// @param str 输入字符串
+/// @param value 输出双精度浮点数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aParseDouble(StringView str, double& value);
+
+
+/// @brief 解析Fortran格式的双精度浮点数，例如"1.23D-4"、"1.23d-4"等
+/// @param str 输入字符串
+/// @param value 输出双精度浮点数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aParseFortranDouble(StringView str, double& value);
+AST_UTIL_CAPI errc_t _aParseFortranDouble_1(StringView str, double& value);  // 堆内存
+AST_UTIL_CAPI errc_t _aParseFortranDouble_2(StringView str, double& value);  // 栈内存
+
+
+
+/// @brief 内部函数，将字符串转换为双精度浮点数（基于C标准库函数）
+/// @param str 输入字符串
+/// @param value 输出双精度浮点数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseDouble_LibC_1(StringView str, double& value);  // 基于 strtod 函数(stod函数)，堆内存
+AST_UTIL_CAPI errc_t _aParseDouble_LibC_2(StringView str, double& value);  // 基于 atof 函数
+AST_UTIL_CAPI errc_t _aParseDouble_LibC_3(StringView str, double& value);  // 基于 strtod 函数(stod函数)，栈内存
+
+
+#ifdef A_CXX17
+AST_UTIL_CAPI errc_t _aParseDouble_FromChars(StringView str, double& value);    // 基于 std::from_chars 函数
+#endif
+
+#ifdef AST_WITH_ABSEIL
+AST_UTIL_CAPI errc_t _aParseDouble_FromChars_Abseil(StringView str, double& value);
+#endif
+
+/// @brief 内部函数，将字符串转换为双精度浮点数（基于 stringstream 流解析）
+/// @param str 输入字符串
+/// @param value 输出双精度浮点数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseDouble_StringStream(StringView str, double& value);
+
+
+
+/// @brief 内部函数，将字符串转换为双精度浮点数（基于 scanf 函数）
+/// @param str 输入字符串
+/// @param value 输出双精度浮点数
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t _aParseDouble_Scanf(StringView str, double& value);      // 基于 scanf 函数
+
+
+
+/// @brief 将字符串转换为颜色值
+/// @param str 输入字符串
+/// @param value 输出颜色值
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aParseColor(StringView str, Color& value);
+
+
+
+/// @brief 将布尔值格式化为字符串
+/// @param value 输入布尔值
+/// @param str 输出字符串
+AST_UTIL_CAPI void aFormatBool(bool value, std::string& str);
+
+
+
+/// @brief 将整数格式化为字符串
+/// @param value 输入整数
+/// @param str 输出字符串
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aFormatInt(int value, std::string& str);
+
+
+enum {kDefaultFormatDoubleEps = -1};
+
+/// @brief 将双精度浮点数格式化为字符串
+/// @param value 输入双精度浮点数
+/// @param str 输出字符串
+/// @param precision 格式化精度，默认自适应
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aFormatDouble(double value, std::string& str, int precision = kDefaultFormatDoubleEps);
+
+
+/// @brief 将颜色值格式化为字符串
+/// @param value 输入颜色值
+/// @param str 输出字符串
+/// @return 0 成功，其他值 失败
+AST_UTIL_CAPI errc_t aFormatColor(Color value, std::string& str);
+
+
+/// @brief 将字节数格式化为易读字符串，如 "5.6 MB"
+/// @param bytes 输入字节数
+/// @return 格式化后的字符串
+AST_UTIL_API std::string aFormatBytes(uint64_t bytes);
+
+
+// alias
+// 下面是内联函数的实现
+
+
+/// @brief 将布尔值格式化为字符串
+/// @param value 输入布尔值
+/// @return 格式化后的字符串
+A_ALWAYS_INLINE
+std::string aFormatBool(bool value)
+{
+    std::string str;
+    aFormatBool(value, str);
+    return str;
+}
+
+
+/// @brief 将整数格式化为字符串
+/// @param value 输入整数
+/// @return 格式化后的字符串
+A_ALWAYS_INLINE
+std::string aFormatInt(int value)
+{
+    std::string str;
+    errc_t err = aFormatInt(value, str);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("格式化整数值失败，错误 = %d"), err);
+    }
+    return str;
+}
+
+
+/// @brief 将双精度浮点数格式化为字符串
+/// @param value 输入双精度浮点数
+/// @param precision 格式化精度，默认值为15
+/// @return 格式化后的字符串
+A_ALWAYS_INLINE
+std::string aFormatDouble(double value, int precision = kDefaultFormatDoubleEps)
+{
+    std::string str;
+    errc_t err = aFormatDouble(value, str, precision);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("格式化双精度浮点数值失败，错误 = %d"), err);
+    }
+    return str;
+}
+
+/// @brief 将颜色值格式化为字符串
+/// @param value 输入颜色值
+/// @return 格式化后的字符串
+A_ALWAYS_INLINE
+std::string aFormatColor(Color value)
+{
+    std::string str;
+    errc_t err = aFormatColor(value, str);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("格式化颜色值失败，错误 = %d"), err);
+    }
+    return str;
+}
+
+
+/// @brief 将字符串转换为布尔值
+/// @param str 输入字符串
+/// @return 转换后的布尔值
+A_ALWAYS_INLINE
+bool aParseBool(StringView str)
+{
+    bool value;
+    errc_t err = aParseBool(str, value);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("从 '%.*s' 解析布尔值失败，错误 = %d"), str.size(), str.data(), err);
+    }
+    return value;
+}
+
+/// @brief 将字符串转换为整数
+/// @param str 输入字符串
+/// @return 转换后的整数
+A_ALWAYS_INLINE
+int aParseInt(StringView str)
+{
+    int value;
+    errc_t err = aParseInt(str, value);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("从 '%.*s' 解析整数值失败，错误 = %d"), str.size(), str.data(), err);
+    }
+    return value;
+}
+
+
+/// @brief 将字符串转换为双精度浮点数
+/// @param str 输入字符串
+/// @return 转换后的双精度浮点数
+A_ALWAYS_INLINE
+double aParseDouble(StringView str)
+{
+    double value;
+    errc_t err = aParseDouble(str, value);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("从 '%.*s' 解析双精度浮点数值失败，错误 = %d"), str.size(), str.data(), err);
+    }
+    return value;
+}
+
+/// @brief 按 Fortran 格式将字符串转换为双精度浮点数
+/// @param str 输入字符串
+/// @return 转换后的双精度浮点数
+A_ALWAYS_INLINE
+double aParseFortranDouble(StringView str)
+{
+    double value;
+    errc_t err = aParseFortranDouble(str, value);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("从 '%.*s' 解析 Fortran 双精度浮点数值失败，错误 = %d"), str.size(), str.data(), err);
+    }
+    return value;
+}
+
+
+/// @brief 将字符串转换为颜色值
+/// @param str 输入字符串
+/// @return 转换后的颜色值
+A_ALWAYS_INLINE
+Color aParseColor(StringView str)
+{
+    Color value;
+    errc_t err = aParseColor(str, value);
+    if (A_UNLIKELY(err != eNoError))
+    {
+        aWarning(_("从 '%.*s' 解析颜色值失败，错误 = %d"), str.size(), str.data(), err);
+    }
+    return value;
+}
+
+
+A_ALWAYS_INLINE
+errc_t aFormatScalar(double value, std::string& str)
+{
+    return aFormatDouble(value, str);
+}
+
+
+A_ALWAYS_INLINE
+errc_t aFormatScalar(int value, std::string& str)
+{
+    return aFormatInt(value, str);
+}
+
+
+A_ALWAYS_INLINE
+void aFormatScalar(bool value, std::string& str)
+{
+    return aFormatBool(value, str);
+}
+
+
+A_ALWAYS_INLINE
+std::string aFormatScalar(double value)
+{
+    return aFormatDouble(value);
+}
+
+A_ALWAYS_INLINE
+std::string aFormatScalar(int value)
+{
+    return aFormatInt(value);
+}
+
+
+A_ALWAYS_INLINE
+std::string aFormatScalar(bool value)
+{
+    return aFormatBool(value);
+}
+
+/*! @} */
+
+AST_NAMESPACE_END

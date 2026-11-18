@@ -1,0 +1,260 @@
+﻿/// @file      GravityAttraction.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-01-14
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "GravityField.hpp"
+#include "AstUtil/StringView.hpp"
+// #include "AstMath/Matrix.hpp"
+// #include "AstMath/Vector.hpp"
+#include <cmath>
+#include <vector>
+#include <memory>
+
+AST_NAMESPACE_BEGIN
+
+/// @brief 计算质点引力场（加速度及 Hessian）
+/// @details
+/// 点质量引力场在给定位置的场强（加速度）和场梯度（Hessian）：
+///
+///   a = -GM/r³ · r
+///   H = -GM/r³ · I + 3·GM/r⁵ · (r ⊗ r)
+///
+/// 其中：
+///   GM  = 引力常数
+///   r   = 位置向量，r = |r|
+///   I   = 3×3 单位矩阵
+///   r⊗r = 位置向量的外积（3×3 对称矩阵）
+///
+/// @param position     位置向量（相对于引力源，任意坐标系）
+/// @param GM           引力常数 [m³/s²]
+/// @param[out] acceleration 场强（引力加速度，与 position 同坐标系）
+/// @param[out] hessian      场梯度 ∂a/∂r（3×3 矩阵，与 position 同坐标系）
+AST_CORE_API void aPointMassField(const Vector3d& position, double GM, Vector3d& acceleration, Matrix3d& hessian);
+
+class GravityCalculator1;
+class GravityCalculator2;
+class GravityCalculator3;
+
+#ifdef _AST_USE_GRAVITY_CALCULATOR_1
+    #define _AST_ENABLE_GRAVITY_CALCULATOR_1
+    using GravityCalculatorDefault = GravityCalculator1;
+#else
+    using GravityCalculatorDefault = GravityCalculator3;
+#endif
+
+/// @brief 重力加速度计算类
+class AST_CORE_API GravityCalculator
+{
+public:
+    GravityCalculator();
+
+    /// @brief 构造函数
+    /// @param gravityField 重力场系数
+    /// @param degree 计算所使用的阶数
+    /// @param order 计算所使用的次数
+    GravityCalculator(const GravityField &gravityField, int degree=-1, int order=-1);
+
+    /// @brief 构造函数
+    /// @param gravityField 重力场系数
+    /// @param degree 计算所使用的阶数
+    /// @param order 计算所使用的次数
+    GravityCalculator(GravityField &&gravityField, int degree=-1, int order=-1);
+
+
+    /// @brief 获取重力场系数
+    /// @return 重力场系数
+    const GravityField& getGravityField() const { return gravityField_; }
+
+    /// @brief 更新重力场系数变化
+    /// @param tp 时间点
+    void updateVariations(const TimePoint& tp){gravityField_.updateVariations(tp);}
+
+    // 在这里不能公开提供返回可修改引用接口，否则会导致重力场系数等参数被修改
+    // 
+    // 例如: 在初始化重力场计算对象后，
+    // 通过重力场的可修改引用调用load函数重新加载重力场模型
+    // 可能导致加载重力场阶次比计算所需的阶次小，从而导致执行崩溃问题
+    // 或者导致加载重力场阶次比计算所需的阶次大，但是计算时并没有使用高阶项，容易导致与预期不符
+    // 
+    // 因此，在这里不能公开提供可修改引用，只能提供const引用
+protected:
+    GravityField& getGravityField() { return gravityField_; }
+public:
+    /// @brief 获取计算阶数
+    /// @return 计算阶数
+    int getDegree() const { return degree_; }
+
+    /// @brief 获取计算次数
+    /// @return 计算次数
+    int getOrder() const { return order_; }
+
+    /// @brief 设置计算偏导数时使用的阶数
+    void setDegreeForPartial(unsigned int degree);
+
+    /// @brief 设置计算偏导数时使用的次数
+    void setOrderForPartial(unsigned int order);
+
+    /// @brief 获取计算偏导数时使用的阶数
+    /// @return 计算偏导数时使用的阶数
+    int getDegreeForPartial() const { return degreeForPartial_; }
+
+    /// @brief 获取计算偏导数时使用的次数
+    /// @return 计算偏导数时使用的次数
+    int getOrderForPartial() const { return orderForPartial_; }
+
+    virtual ~GravityCalculator () = default;
+
+    /// @brief 计算摄动加速度
+    /// @param positionCBF 位置向量（天体固连系）
+    /// @param accelerationCBF 摄动加速度向量（天体固连系）
+    virtual void calcPertAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF) = 0;
+
+    /// @brief 计算总加速度（包含摄动项）
+    /// @param positionCBF 位置向量（天体固连系）
+    /// @param accelerationCBF 总加速度向量（天体固连系）
+    void calcTotalAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF);
+private:
+    void initDegreeOrder(int degree, int order);
+protected:
+    GravityField gravityField_;                 ///< 重力场系数
+    unsigned int degree_{0};                    ///< 计算所使用的阶数
+    unsigned int order_{0};                     ///< 计算所使用的次数
+    unsigned int degreeForPartial_{0};          ///< 计算偏导数时使用的阶数
+    unsigned int orderForPartial_{0};           ///< 计算偏导数时使用的次数
+};
+
+#ifdef _AST_ENABLE_GRAVITY_CALCULATOR_1
+
+/// @brief 重力加速度计算类1
+class AST_CORE_API GravityCalculator1 final: public GravityCalculator
+{
+public:
+    GravityCalculator1();
+    GravityCalculator1(const GravityField &gravityField, int degree, int order);
+    ~GravityCalculator1();
+
+    void calcPertAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF) final;
+
+protected:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
+#endif
+
+
+/// @brief 重力加速度计算类2 - Holmes-Featherstone算法
+class AST_CORE_API GravityCalculator2 final: public GravityCalculator
+{
+public:
+    GravityCalculator2(const GravityField &gravityField, int degree, int order);
+
+    /// @brief 计算重力加速度
+    void calcPertAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF) final;
+
+private:
+    /// @brief 初始化递归系数
+    void initializeRecursionCoefficients();
+
+    /// @brief 计算非中心部分的梯度
+    void computeGradient(const Vector3d &position, Vector3d &gradient);
+
+    /// @brief 计算田谐项
+    int computeTesseral(int m, int degree, int index, double t, double u, double tOu);
+
+private:
+    /// @brief 递归系数 g_{n,m}/√j
+    std::vector<double> gnmOj_{};
+
+    /// @brief 递归系数 h_{n,m}/√j
+    std::vector<double> hnmOj_{};
+
+    /// @brief 递归系数 e_{n,m}
+    std::vector<double> enm_{};
+
+    /// @brief 缩放扇区项 Pbar_{m,m}/u^m × 2^{-SCALING}
+    std::vector<double> sectorial_{};
+private:
+    std::vector<double> pnm0Plus2{};
+    std::vector<double> pnm0Plus1{};
+    std::vector<double> pnm0{};
+    std::vector<double> pnm1{};
+private:
+    std::vector<double> aOrN{};
+    std::vector<double> cosLambdaN{};
+    std::vector<double> sinLambdaN{};
+};
+
+
+/// @brief 重力加速度计算类3
+/// @details Pines算法，来自GMAT的实现
+class AST_CORE_API GravityCalculator3 final: public GravityCalculator
+{
+public:
+    GravityCalculator3();
+    GravityCalculator3(const GravityField &gravityField, int degree, int order);
+    GravityCalculator3(GravityField &&gravityField, int degree, int order);
+
+    GravityCalculator3(const GravityCalculator3&) = delete;
+    GravityCalculator3& operator=(const GravityCalculator3&) = delete;
+
+    ~GravityCalculator3() override;
+
+    void calcPertAcceleration(const Vector3d &positionCBF, Vector3d &accelerationCBF) final;
+    void calcPertAcceleration(const Vector3d &positionCBF, Vector3d &accelerationCBF, Matrix3d &gradient);
+    template<bool fillgradient>
+    void calcPertAcceleration(const Vector3d &positionCBF, Vector3d &accelerationCBF, Matrix3d *gradient);
+    using GravityCalculator::calcTotalAcceleration;
+    void calcTotalAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF, Matrix3d &gradient);
+protected:
+    void init();
+    void deinit();
+private:
+    double        Factor;  // Factor = 1 (magnetic) or -mu (gravity)
+    double**      C{};       // Normalized harmonic coefficients
+    double**      S{};       // Normalized harmonic coefficients
+    double**      A{};       // Normalized 'derived' Assoc. Legendre Poly
+    double**      V{};       // Normalization factor
+    double*       Re{};      // powers of projection of pos onto x_ecf (re)
+    double*       Im{};      // powers of projection of pos onto y_ecf (im)
+    double**      N1{};      // Temporary
+    double**      N2{};      // Temporary
+    double**      VR01{};    // Temporary
+    double**      VR11{};    // Temporary
+    double**      VR02{};    // Temporary
+    double**      VR12{};    // Temporary
+    double**      VR22{};    // Temporary
+};
+
+
+class AST_CORE_API GravityCalculator4 final: public GravityCalculator
+{
+public:
+    using GravityCalculator::GravityCalculator;
+
+    void calcPertAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF) final;
+};
+
+
+class AST_CORE_API GravityCalculator5 final: public GravityCalculator
+{
+public:
+    using GravityCalculator::GravityCalculator;
+
+    void calcPertAcceleration (const Vector3d &positionCBF, Vector3d &accelerationCBF) final;
+};
+
+
+AST_NAMESPACE_END
+
+AST_DECL_TYPE_ALIAS(GravityCalculator)
+AST_DECL_TYPE_ALIAS(GravityCalculator1)
+AST_DECL_TYPE_ALIAS(GravityCalculator2)
+AST_DECL_TYPE_ALIAS(GravityCalculator3)
+AST_DECL_TYPE_ALIAS(GravityCalculator4)
+AST_DECL_TYPE_ALIAS(GravityCalculator5)

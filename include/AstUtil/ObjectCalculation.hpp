@@ -1,0 +1,68 @@
+﻿/// @file      ObjectCalculation.hpp
+/// @brief     
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-04-19
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/ObjectNamed.hpp"
+#include "AstUtil/Dimension.hpp"
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup 
+    @{
+*/
+
+
+/// @brief 对象计算基类
+/// @details 对象计算基类是所有对象计算类的基类，它定义了对象计算的基本接口
+/// 不同类型的对象计算类通过继承自ObjectCalculation类来实现多态行为
+/// 参考GMATMathSpec.pdf第三章 Calculation Objects
+/// @ingroup RTTI
+class AST_UTIL_API ObjectCalculation : public ObjectNamed
+{
+public:
+    AST_OBJECT(ObjectCalculation)
+
+    using ObjectNamed::ObjectNamed;
+    ~ObjectCalculation() override = default;
+public:
+    /// @brief 获取期望输入的对象类型
+    /// @return 期望输入的对象类型
+    virtual Class* getExpectedType() const = 0;
+
+    /// @brief 计算结果
+    /// @param obj 要计算的对象
+    /// @param result 计算结果
+    /// @warning 该方法不检查对象类型是否符合预期类型，请在调用前进行类型检查或转换。
+    /// 如果对象类型不符合预期类型，将导致运行时错误。
+    /// @return 错误码
+    virtual errc_t calculateNoCheckType(const Object* obj, double& result) = 0;
+
+    /// @brief 获取计算结果的量纲
+    virtual Dimension getDimension() const {return EDimension::eUnit;}
+
+    /// @brief 检查计算结果是否为角度量纲
+    bool isAngle() const {return getDimension() == EDimension::eAngle;}
+
+    /// @brief 计算结果
+    /// @param obj 要计算的对象
+    /// @param result 计算结果
+    /// @return 错误码
+    errc_t calculate(const Object* obj, double& result);
+
+    /// @brief 检查对象类型是否符合预期类型
+    /// @param obj 要检查的对象
+    /// @return 是否符合预期类型
+    bool isExpectedType(const Object* obj) const;
+};
+
+
+
+/*! @} */
+
+AST_NAMESPACE_END

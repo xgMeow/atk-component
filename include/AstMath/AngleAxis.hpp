@@ -1,0 +1,75 @@
+﻿/// @file      AngleAxis.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2025-12-08
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstMath/Vector.hpp"
+#include "AstMath/Matrix.hpp"
+#include "AstMath/AttitudeConvert.hpp"
+
+AST_NAMESPACE_BEGIN
+
+
+/// @brief 轴角类
+/// @details 轴角类表示三维空间的旋转，由旋转轴和旋转角度组成。
+/// @ingroup Attitude
+class AngleAxis
+{
+public:
+    /// @brief 轴角类默认构造函数，对成员进行值初始化（基础类型初始化为0）
+    AngleAxis() : axis_(), angle_() {};
+
+    /// @brief 轴角类构造函数
+    /// @param axis 旋转轴
+    /// @param angle 旋转角度（弧度）
+    AngleAxis(double angle, const Vector3d& axis)
+    : axis_(axis), angle_(angle){}
+
+    /// @brief 获取旋转角度（弧度）
+    /// @return 旋转角度（弧度）
+    double angle() const { return angle_; }
+    double& angle() { return angle_; }
+
+    /// @brief 获取旋转轴
+    /// @return 旋转轴
+    const Vector3d& axis() const { return axis_; }
+    Vector3d& axis() { return axis_; }
+
+
+public:
+    /// @brief 获取轴角的逆旋转
+    /// @return 轴角的逆旋转
+    AngleAxis inverse() const { return AngleAxis(-angle_, axis_); }
+
+public:
+
+    /// @brief 从旋转矩阵构造轴角
+    /// @param mtx 旋转矩阵
+    /// @return 轴角
+    AngleAxis& fromRotationMatrix(const Matrix3d& mtx){
+        aMatrixToAngleAxis(mtx, *this);
+        return *this;
+    }
+
+    /// @brief 轴角转旋转矩阵
+    /// @return 旋转矩阵
+    Matrix3d toRotationMatrix() const{
+        Matrix3d mtx;
+        aAngleAxisToMatrix(*this, mtx);
+        return mtx;
+    }
+
+public:
+    Vector3d axis_;     ///< 旋转轴
+    double angle_;      ///< 旋转角度（弧度）
+};
+
+
+
+
+
+AST_NAMESPACE_END

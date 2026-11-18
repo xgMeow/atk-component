@@ -1,0 +1,376 @@
+﻿/// @file      SimpleFileSystem.hpp
+/// @brief     c++17 标准库 filesystem的简化实现，保证api规范一致，使得在c++11时也能使用filesystem
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      23.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/StringView.hpp"
+
+#include <string>
+#include <vector>
+#include <system_error>
+#include <chrono>
+#include <cstdint>
+#include <ctime>
+#include <algorithm>
+#include <cstring>
+#include <memory>
+
+AST_NAMESPACE_BEGIN
+
+
+
+#define _AST_FS _AST fs_simple::
+
+
+/// @brief 简化的文件系统操作类
+/// @details  本类提供了简化的文件系统操作接口，与c++17标准库filesystem的api规范保持一致。
+///           主要功能包括路径操作、文件属性查询、目录遍历等。
+/// @ingroup Platform
+namespace fs_simple
+{
+    // 定义平台相关的字符串类型
+    using string_type = std::string;
+    using char_type = char;
+
+    // 错误码
+    class filesystem_error : public std::system_error
+    {
+    public:
+        using std::system_error::system_error;
+        explicit filesystem_error(
+            const std::string& what, 
+            std::error_code ec=std::make_error_code(std::errc::operation_not_supported)
+        ): std::system_error(ec, what)
+        {}
+    };
+
+    // 路径类
+    class path
+    {
+    public:
+        path() = default;
+
+        path(const char_type* source) : path_(source)
+        {}
+        path(const string_type& source) : path_(source)
+        {}
+        path(StringView source) : path_(source.data(), source.size())
+        {}
+
+        std::string string() const{return path_;}
+
+        // 返回平台相关的字符串类型
+        const string_type& native() const{return path_;}
+
+        // 返回平台相关的字符指针
+        const char_type* c_str() const{return path_.c_str();}
+
+        // 辅助函数：判断是否为路径分隔符
+        static bool is_separator(char_type c)
+        {
+            #ifdef _WIN32
+            return c == '/' || c == '\\';
+            #else
+            return c == '/';
+            #endif
+        }
+
+        static const char_type* separators()
+        {
+            #ifdef _WIN32
+            return "/\\";
+            #else
+            return "/";
+            #endif
+        }
+
+        static char_type preferred_separator()
+        {
+            #ifdef _WIN32
+            return '\\';
+            #else
+            return '/';
+            #endif
+        }
+
+        // 路径操作
+        path filename() const
+        {
+            auto pos = path_.find_last_of(separators());
+            if (pos == string_type::npos) return path_;
+            return path_.substr(pos + 1);
+        }
+
+        path extension() const
+        {
+            auto name = filename().native();
+            auto pos = name.find_last_of(char_type('.'));
+            if (pos == string_type::npos) return string_type();
+            return name.substr(pos);
+        }
+
+        /// @brief 获取文件名的无扩展名部分
+        /// @return 提取路径中最后一个文件名的主干部分（即去掉扩展名后的文件名）
+        path stem() const
+        {
+            auto name = filename().native();
+            auto pos = name.find_last_of(char_type('.'));
+            if (pos == string_type::npos) return name;
+            return name.substr(0, pos);
+        }
+
+        path parent_path() const
+        {
+            auto pos = path_.find_last_of(separators());
+            if (pos == string_type::npos) return string_type();
+            return path_.substr(0, pos);
+        }
+
+        bool is_absolute() const
+        {
+            if (path_.empty()) return false;
+
+        #ifdef _WIN32
+            // UNC 路径 (\\server\share\...)
+            if (path_.size() >= 2 && is_separator(path_[0]) && is_separator(path_[1]))
+                return true;
+
+            // 盘符路径 (C:\... 或 C:/...)
+            if (path_.size() >= 3
+                && ((path_[0] >= 'A' && path_[0] <= 'Z') || (path_[0] >= 'a' && path_[0] <= 'z'))
+                && path_[1] == ':'
+                && is_separator(path_[2]))
+                return true;
+
+            // 仅根目录 (\... 或 /...)
+            if (is_separator(path_[0]))
+                return true;
+
+            return false;
+        #else
+            // POSIX: 以 / 开头即为绝对路径
+            return is_separator(path_[0]);
+        #endif
+        }
+
+        bool is_relative() const
+        {
+            return !is_absolute();
+        }
+
+        /// @brief 词法上计算当前路径相对于 base 的相对路径
+        /// @details 不检查文件系统，纯词法操作。若不存在相对路径则返回空路径
+        AST_UTIL_API
+        path lexically_relative(const path& base) const;
+
+        bool empty() const
+        {
+            return path_.empty();
+        }
+
+        // 操作符重载
+        path operator/(const path& other) const
+        {
+            if (path_.empty()) return other;
+            if (other.path_.empty()) return *this;
+
+            // 确保路径分隔符正确
+            bool needs_separator = !is_separator(path_.back()) && !is_separator(other.path_.front());
+            if (needs_separator) {
+                return path_ + preferred_separator() + other.path_;
+            }
+            return path_ + other.path_;
+        }
+
+        path& operator/=(const path& other)
+        {
+            *this = *this / other;
+            return *this;
+        }
+
+        operator string_type() const
+        {	
+            return (path_);
+        }
+    private:
+        string_type path_{};
+    };
+
+    // 文件类型枚举
+    enum class file_type
+    {
+        none,
+        not_found,
+        regular,
+        directory,
+        symlink,
+        unknown
+    };
+
+    // 文件状态
+    class file_status
+    {
+    public:
+        file_status() : type_(file_type::none)
+        {}
+        explicit file_status(file_type type) : type_(type)
+        {}
+
+        file_type type() const
+        {
+            return type_;
+        }
+
+    private:
+        file_type type_;
+    };
+
+    // 目录条目
+    class directory_entry
+    {
+
+    public:
+        directory_entry() = default;
+        explicit directory_entry(const _AST_FS path& p) : path_(p)
+        {}
+
+        const _AST_FS path& path() const
+        {
+            return path_;
+        }
+        AST_UTIL_API
+        file_status status() const;
+    private:
+        _AST_FS path path_{};
+    };
+
+    // 目录迭代器
+    class AST_UTIL_API directory_iterator
+    {
+    public:
+        directory_iterator() : impl_(nullptr), entry_()
+        {}
+        explicit directory_iterator(const path& p);
+        ~directory_iterator() = default;
+
+        directory_iterator(const directory_iterator&);
+        directory_iterator& operator=(const directory_iterator&);
+        directory_iterator(directory_iterator&& other) noexcept;
+        directory_iterator& operator=(directory_iterator&& other) noexcept;
+
+        const directory_entry& operator*() const
+        {
+            return entry_;
+        }
+        const directory_entry* operator->() const
+        {
+            return &entry_;
+        }
+
+        directory_iterator& operator++();
+
+        bool operator==(const directory_iterator& other) const
+        {
+            return impl_ == other.impl_;
+        }
+        bool operator!=(const directory_iterator& other) const
+        {
+            return !(*this == other);
+        }
+
+    private:
+        struct impl;
+        std::shared_ptr<impl> impl_;
+        directory_entry entry_;
+
+        void read_next_entry();
+    };
+
+    // 基础文件操作
+    AST_UTIL_API bool exists(const path& p);
+    AST_UTIL_API bool exists(const path& p, std::error_code& ec) noexcept;
+    AST_UTIL_API uintmax_t file_size(const path& p);
+    AST_UTIL_API uintmax_t file_size(const path& p, std::error_code& ec) noexcept;
+    AST_UTIL_API bool is_empty(const path& p);
+    AST_UTIL_API bool is_empty(const path& p, std::error_code& ec) noexcept;
+    AST_UTIL_API file_status status(const path& p) noexcept;
+    AST_UTIL_API file_status status(const path& p, std::error_code& ec) noexcept;
+
+    A_ALWAYS_INLINE bool is_regular_file(file_status s) noexcept{ return s.type() == file_type::regular; }
+    A_ALWAYS_INLINE bool is_directory(file_status s) noexcept{ return s.type() == file_type::directory; }
+    A_ALWAYS_INLINE bool is_directory(const path& p) noexcept{ return is_directory(status(p)); }
+    AST_UTIL_API bool is_directory(const path& p, std::error_code& ec) noexcept;
+    A_ALWAYS_INLINE bool is_regular_file(const path& p) noexcept{ return is_regular_file(status(p)); }
+
+    // 目录操作
+    AST_UTIL_API bool create_directory(const path& p) noexcept;
+    AST_UTIL_API bool create_directory(const path& p, std::error_code& ec) noexcept;
+    AST_UTIL_API bool create_directories(const path& p) noexcept;
+    AST_UTIL_API bool create_directories(const path& p, std::error_code& ec) noexcept;
+    AST_UTIL_API bool remove(const path& p) noexcept;
+    AST_UTIL_API bool remove(const path& p, std::error_code& ec) noexcept;
+    AST_UTIL_API uintmax_t remove_all(const path& p) noexcept;
+
+    // 文件操作
+    AST_UTIL_API bool copy_file(const path& from, const path& to) noexcept;
+    AST_UTIL_API bool rename(const path& old_p, const path& new_p) noexcept;
+
+    // 目录迭代器相关
+    inline directory_iterator begin(const directory_iterator& iter) noexcept
+    {
+        return iter;
+    }
+    inline directory_iterator end(const directory_iterator&) noexcept
+    {
+        return directory_iterator();
+    }
+
+    // 空间信息
+    struct space_info
+    {
+        uintmax_t capacity;
+        uintmax_t free;
+        uintmax_t available;
+    };
+    inline bool operator==(const path& left, const path& right) 
+    {	
+        return (left.native() == right.native());
+    }
+    inline bool operator!=(const path& left, const path& right)
+    {
+        return (left.native() != right.native());
+    }
+    AST_UTIL_API space_info space(const path& p);
+
+    // 最后修改时间（简化版，返回time_t）
+    AST_UTIL_API std::time_t last_write_time(const path& p);
+
+    // 当前路径相关函数
+    AST_UTIL_API path current_path() noexcept(false);
+    AST_UTIL_API path current_path(std::error_code& ec) noexcept;
+    AST_UTIL_API void current_path(const path& new_path) noexcept(false);
+    AST_UTIL_API void current_path(const path& new_path, std::error_code& ec) noexcept;
+
+    /// @brief 计算 p 相对于 base 的相对路径（对标 std::filesystem::relative）
+    /// @note 若 p 和 base 根不同（如不同盘符）则设置 ec 并返回空路径
+    AST_UTIL_API path relative(const path& p, const path& base, std::error_code& ec) noexcept;
+
+    /// @brief 获取绝对路径
+    /// @note 纯词法操作：已经是绝对路径时原样返回，否则拼接到 current_path() 上
+    AST_UTIL_API path absolute(const path& p);
+    AST_UTIL_API path absolute(const path& p, std::error_code& ec) noexcept;
+
+    /// @brief 获取系统临时文件夹
+    /// @details Windows 取 GetTempPathW；POSIX 依次取 TMPDIR 环境变量、/tmp
+    AST_UTIL_API path temp_directory_path();
+    AST_UTIL_API path temp_directory_path(std::error_code& ec) noexcept;
+
+} // namespace simple_fs
+
+
+
+AST_NAMESPACE_END

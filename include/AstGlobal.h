@@ -1,0 +1,586 @@
+﻿/// @file      AstGlobal.h
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      15.11.2025
+
+#pragma once
+
+
+
+/*
+ * 宏命名规范：
+ * 
+ * 前缀 A_          ：通用宏，也能用于其他工程
+ * 前缀 AST_        ：ast项目专用宏、ast模块相关、ast功能相关宏
+ * 前缀 _           ：内部宏
+ * 
+ * 前缀 AST_WITH_   ：是否带有某个第三方库，例如eigen、boost、fmt、ipopt等
+ * 前缀 AST_ENABLE_ ：是否启用某个特定特性，通常是性能、调试、功能的开关，例如调试信息、缓存、日志、后缀名称等
+ * 前缀 AST_DISABLE_：是否禁用某个特定特性，通常是性能、调试、功能的开关，例如调试信息、缓存、日志、后缀名称等
+ * 前缀 AST_USE_    ：是否使用某个实现方法，通常是可选、可替换的实现方式，例如不同的算法、不同的数据结构
+ * 前缀 AST_HAS_    ：是否具有某个特定功能，通常是指示标准库是否有某功能，例如是否有某个函数、是否有某个类型
+ * */
+
+
+// 通用宏见"AstCompiler.h"
+#include "AstCompiler.h"
+
+#include <stddef.h>         // for size_t
+#include <stdint.h>         // for uint32_t
+#ifdef __cplusplus
+#include <array>            // for array
+// #include <string_view>
+#endif
+
+// 下面是ast项目专用宏，用于控制ast项目的行为，你可以根据需要定义或注释掉这些宏
+// 有些宏定义会改变项目的二进制接口(ABI)，使用不同宏定义编译的库文件互相不兼容
+// 请确保整个项目中使用一致的配置，避免混用不同配置的库文件和头文件
+
+
+#define AST_ENABLE_NAMESPACE                     // [影响ABI]是否使用命名空间(如果关闭，需要同步更改rules.lua里的qt.moc.flags)
+// #define AST_USE_CRT_SAFE                      // 是否使用CRT安全函数，例如_wfopen_s、_wfreopen_s等
+                                                 //（已废弃，这些函数无法共享文件，即同时打开相同文件，在一些情况下有问题）
+
+// #define AST_ENABLE_OVERRIDE_STDLIB            // 是否允许覆盖标准库的一些函数
+// #define AST_ENABLE_DATETIME_FORMAT_RFC        // 是否启用RFC系列的其他日期时间格式化，例如RFC 1123、RFC 2822等
+// #define AST_ENABLE_REDUNDANT                  // 是否启用冗余功能
+// #define AST_ENABLE_CAPI                       // 是否启用C语言接口
+
+// #define AST_DISABLE_AUTO_DOWNLOAD_DATA        // 是否禁用自动下载数据功能
+
+// #define AST_USE_STD_STRING_VIEW               // [影响ABI]是否使用 std::string_view ，否则使用内置的string_view
+// #define AST_USE_STD_FILESYSTEM                // 是否使用 std::filesystem，如果存在的话，否则使用内置的filesystem
+// #define AST_USE_STD_FILESYSTEM_EXPERIMENTAL   // 是否选择使用 std::experimental::filesystem 的c++实验特性，如果存在的话
+
+/// 项目专用宏
+#if defined AST_ENABLE_NAMESPACE && defined(__cplusplus) 
+#   define _AST ::ast:: 
+#	define AST_NAMESPACE ast
+#	define AST_NAMESPACE_BEGIN namespace AST_NAMESPACE{
+#	define AST_NAMESPACE_END   }
+#	define AST_USING_NAMESPACE using namespace AST_NAMESPACE;
+#	define AST_PREPEND_NAMESPACE(name) ::AST_NAMESPACE::name
+#	define AST_DECL_TYPE_ALIAS(name) typedef AST_PREPEND_NAMESPACE(name) A##name;
+#else
+#   ifdef __cplusplus
+#       define _AST ::
+#   else
+#       define _AST 
+#   endif
+#	define AST_NAMESPACE 
+#	define AST_NAMESPACE_BEGIN 
+#	define AST_NAMESPACE_END   
+#	define AST_USING_NAMESPACE 
+#	define AST_PREPEND_NAMESPACE(name) ::name
+#	define AST_DECL_TYPE_ALIAS(name)
+#endif
+
+
+// 定义调试库后缀
+#if defined(_WIN32)
+#   define _AST_DEBUG_SUFFIX "_d"
+#   define _AST_ENABLE_DEBUG_SUFFIX  // 内部宏，标识库的调试版本是否有后缀
+#   define AST_APPEND_DEBUG(NAME) NAME _AST_DEBUG_SUFFIX
+#else
+#   define _AST_DEBUG_SUFFIX ""
+#   undef  _AST_ENABLE_DEBUG_SUFFIX
+#   define AST_APPEND_DEBUG(NAME) NAME
+#endif
+
+// 库链接名称前缀
+#ifndef _AST_LIB_PREFIX
+#   define _AST_LIB_PREFIX ""
+#else
+#   define _AST_ENABLE_LIB_PREFIX
+#endif
+
+// 库链接名称后缀
+#if !defined(_AST_LIB_SUFFIX)
+#   ifdef _DEBUG
+#       define _AST_ENABLE_LIB_SUFFIX
+#       define _AST_LIB_SUFFIX _AST_DEBUG_SUFFIX
+#   else
+#       define _AST_LIB_SUFFIX ""
+#   endif
+#else
+#   define _AST_ENABLE_LIB_SUFFIX
+#endif
+
+// 库链接名称
+#ifdef _AST_ENABLE_LIB_SUFFIX
+    #define AST_LIB_LINKNAME(NAME) _AST_LIB_PREFIX  NAME  _AST_LIB_SUFFIX
+#else
+    #define AST_LIB_LINKNAME(NAME) _AST_LIB_PREFIX  NAME
+#endif
+
+// 定义访问函数
+#define AST_DEF_ACCESS_METHOD(TYPE, NAME) TYPE NAME() const{return NAME##_;} TYPE& NAME(){return NAME##_;}
+
+#ifdef AST_PROPERTIES_MARK
+#   define AST_PROPERTIES AST_PROPERTIES_MARK public
+#else
+#   define AST_PROPERTIES public
+#endif
+#define PROPERTIES AST_PROPERTIES
+
+
+// 字符串宏，用于在编译时将字符串转换为内部运行时编码
+// 当前内部运行时采用utf-8编码，所有字符串字面量都需要在编译时转换为utf-8编码
+// 但是考虑到为了有可能会采用其他编码，例如utf-16等，所以这里保留宏定义
+#define _aText(x) (u8 ## x)
+#ifdef A_CXX20
+#   define aText(x) (reinterpret_cast<const char*>(u8 ## x))
+#else
+#   define aText(x) (u8 ## x)
+#endif
+
+// 用于标记翻译字符串，不进行即时翻译
+#ifndef N_
+    #define N_(String) String
+#endif
+
+// 用于标记带上下文的翻译字符串，不进行即时翻译
+#ifndef NC_
+    #define NC_(Context, String) String
+#endif
+
+
+#if defined(_MSC_VER) && !defined(__clang__)  // clang 的默认执行字符集本就是 utf-8，无需设置
+#   pragma warning(disable: 4251)   // 禁用未导出的符号警告，因为一些类使用了stl等模板容器
+#   if defined(AST_BUILD_LIB) && _MSC_FULL_VER <= 190023918
+    // VS2015 Update 2 之前的版本 (190023918) 不支持 /utf-8 选项
+    // 故采用 #pragma execution_character_set 指定运行时编码
+    // 仅在编译时启用，避免污染其他项目的字符串运行时编码
+#       pragma execution_character_set("utf-8")
+#   endif
+#endif
+
+// 脚本模块导出声明
+#ifdef AST_BUILD_LIB_SCRIPT
+#    define AST_SCRIPT_API A_DECL_EXPORT
+#else
+#    define AST_SCRIPT_API A_DECL_IMPORT
+#endif
+#define AST_SCRIPT_CAPI A_DECL_EXTERN_C AST_SCRIPT_API
+
+
+// 核心模块导出声明
+#ifdef AST_BUILD_LIB_CORE
+#    define AST_CORE_API A_DECL_EXPORT
+#else
+#    define AST_CORE_API A_DECL_IMPORT
+#endif
+#define AST_CORE_CAPI A_DECL_EXTERN_C AST_CORE_API
+
+// 优化模块导出声明
+#ifdef AST_BUILD_LIB_OPT
+#    define AST_OPT_API A_DECL_EXPORT
+#else
+#    define AST_OPT_API A_DECL_IMPORT
+#endif
+#define AST_OPT_CAPI  A_DECL_EXTERN_C AST_OPT_API
+
+// 数学模块导出声明
+#ifdef AST_BUILD_LIB_MATH
+#    define AST_MATH_API A_DECL_EXPORT
+#else
+#    define AST_MATH_API A_DECL_IMPORT
+#endif
+#define AST_MATH_CAPI A_DECL_EXTERN_C AST_MATH_API
+
+// 工具模块导出声明
+#ifdef AST_BUILD_LIB_UTIL
+#    define AST_UTIL_API A_DECL_EXPORT
+#else
+#    define AST_UTIL_API A_DECL_IMPORT
+#endif
+#define AST_UTIL_CAPI A_DECL_EXTERN_C AST_UTIL_API
+
+// 天文计算器模块导出声明
+#if defined AST_BUILD_LIB_CALC
+#    define AST_CALC_API A_DECL_EXPORT
+#else
+#    define AST_CALC_API A_DECL_IMPORT
+#endif
+#define AST_CALC_CAPI A_DECL_EXTERN_C AST_CALC_API
+
+// 仿真模块导出声明
+#if defined AST_BUILD_LIB_SIM
+#    define AST_SIM_API A_DECL_EXPORT
+#else
+#    define AST_SIM_API A_DECL_IMPORT
+#endif
+#define AST_SIM_CAPI A_DECL_EXTERN_C AST_SIM_API
+
+// 引擎模块导出声明
+#ifdef AST_BUILD_LIB_ENGINE
+#    define AST_ENGINE_API A_DECL_EXPORT
+#else
+#    define AST_ENGINE_API A_DECL_IMPORT
+#endif
+#define AST_ENGINE_CAPI A_DECL_EXTERN_C AST_ENGINE_API
+
+// 模拟模块导出声明
+#ifdef AST_BUILD_LIB_MOCK
+#    define AST_MOCK_API A_DECL_EXPORT
+#else
+#    define AST_MOCK_API A_DECL_IMPORT
+#endif
+#define AST_MOCK_CAPI A_DECL_EXTERN_C AST_MOCK_API
+
+// 绘图模块导出声明
+#ifdef AST_BUILD_LIB_PLOT
+#    define AST_PLOT_API A_DECL_EXPORT
+#else
+#    define AST_PLOT_API A_DECL_IMPORT
+#endif
+#define AST_PLOT_CAPI A_DECL_EXTERN_C AST_PLOT_API
+
+// UiCore模块导出声明
+#ifdef AST_BUILD_LIB_UICORE
+#    define AST_UICORE_API A_DECL_EXPORT
+#else
+#    define AST_UICORE_API A_DECL_IMPORT
+#endif
+#define AST_UICORE_CAPI A_DECL_EXTERN_C AST_UICORE_API
+
+// Chart模块导出声明
+#ifdef AST_BUILD_LIB_CHART
+#    define AST_CHART_API A_DECL_EXPORT
+#else
+#    define AST_CHART_API A_DECL_IMPORT
+#endif
+#define AST_CHART_CAPI A_DECL_EXTERN_C AST_CHART_API
+
+// 可视化模块导出声明
+#ifdef AST_BUILD_LIB_GFX
+#    define AST_GFX_API A_DECL_EXPORT
+#else
+#    define AST_GFX_API A_DECL_IMPORT
+#endif
+#define AST_GFX_CAPI A_DECL_EXTERN_C AST_GFX_API
+
+// 天气模型模块导出声明
+#ifdef AST_BUILD_LIB_WEATHER
+#    define AST_WEATHER_API A_DECL_EXPORT
+#else
+#    define AST_WEATHER_API A_DECL_IMPORT
+#endif
+#define AST_WEATHER_CAPI A_DECL_EXTERN_C AST_WEATHER_API
+
+
+/// SPICE模块导出声明
+#ifdef AST_BUILD_LIB_SPICE
+#    define AST_SPICE_API A_DECL_EXPORT
+#else
+#    define AST_SPICE_API A_DECL_IMPORT
+#endif
+#define AST_SPICE_CAPI A_DECL_EXTERN_C AST_SPICE_API
+
+
+/// 测试模块导出声明
+#ifdef AST_BUILD_LIB_TEST
+#    define AST_TEST_API A_DECL_EXPORT
+#else
+#    define AST_TEST_API A_DECL_IMPORT
+#endif
+#define AST_TEST_CAPI A_DECL_EXTERN_C AST_TEST_API
+
+// 序列化模块导出声明
+// #ifdef AST_BUILD_LIB_SERDE
+// #    define AST_SERDE_API A_DECL_EXPORT
+// #else
+// #    define AST_SERDE_API A_DECL_IMPORT
+// #endif
+// #define AST_SERDE_CAPI A_DECL_EXTERN_C AST_SERDE_API
+
+
+// 加载模块导出声明
+#ifdef AST_BUILD_LIB_LOADER
+#    define AST_LOADER_API A_DECL_EXPORT
+#else
+#    define AST_LOADER_API A_DECL_IMPORT
+#endif
+#define AST_LOADER_CAPI A_DECL_EXTERN_C AST_LOADER_API
+
+
+// 报表模块导出声明
+#ifdef AST_BUILD_LIB_REPORT
+#    define AST_REPORT_API A_DECL_EXPORT
+#else
+#    define AST_REPORT_API A_DECL_IMPORT
+#endif
+#define AST_REPORT_CAPI A_DECL_EXTERN_C AST_REPORT_API
+
+
+// AI模块导出声明
+#ifdef AST_BUILD_LIB_AI
+#    define AST_AI_API A_DECL_EXPORT
+#else
+#    define AST_AI_API A_DECL_IMPORT
+#endif
+#define AST_AI_CAPI A_DECL_EXTERN_C AST_AI_API
+
+// UiPilot模块导出声明
+#ifdef AST_BUILD_LIB_UIPILOT
+#    define AST_UIPILOT_API A_DECL_EXPORT
+#else
+#    define AST_UIPILOT_API A_DECL_IMPORT
+#endif
+#define AST_UIPILOT_CAPI A_DECL_EXTERN_C AST_UIPILOT_API
+
+// COM封装模块导出声明
+#ifdef AST_BUILD_LIB_COM
+#   define AST_COM_API A_DECL_EXPORT
+#else
+#   define AST_COM_API A_DECL_IMPORT
+#endif
+#define AST_COM_CAPI A_DECL_EXTERN_C AST_COM_API
+
+
+// 命令模块导出声明
+#ifdef AST_BUILD_LIB_CMD
+#   define AST_CMD_API A_DECL_EXPORT
+#else
+#   define AST_CMD_API A_DECL_IMPORT
+#endif
+#define AST_CMD_CAPI A_DECL_EXTERN_C AST_CMD_API
+
+
+// 分析模块导出声明
+#ifdef AST_BUILD_LIB_ANALYZER
+#    define AST_ANALYZER_API A_DECL_EXPORT
+#else
+#    define AST_ANALYZER_API A_DECL_IMPORT
+#endif
+#define AST_ANALYZER_CAPI A_DECL_EXTERN_C AST_ANALYZER_API
+
+
+// 故障捕获模块导出声明
+#ifdef AST_BUILD_LIB_FAULT
+#    define AST_FAULT_API A_DECL_EXPORT
+#else
+#    define AST_FAULT_API A_DECL_IMPORT
+#endif
+#define AST_FAULT_CAPI A_DECL_EXTERN_C AST_FAULT_API
+
+#ifndef AST_PROJECT_NAME
+#   define AST_PROJECT_NAME "ast"
+#endif
+
+// UiAI模块导出声明
+#ifdef AST_BUILD_LIB_UIAI
+#    define AST_UIAI_API A_DECL_EXPORT
+#else
+#    define AST_UIAI_API A_DECL_IMPORT
+#endif
+#define AST_UIAI_CAPI A_DECL_EXTERN_C AST_UIAI_API
+
+
+// UiUtil模块导出声明
+#ifdef AST_BUILD_LIB_UIUTIL
+#    define AST_UIUTIL_API A_DECL_EXPORT
+#else
+#    define AST_UIUTIL_API A_DECL_IMPORT
+#endif
+#define AST_UIUTIL_CAPI A_DECL_EXTERN_C AST_UIUTIL_API
+
+
+// 可视化模块导出声明
+#ifdef AST_BUILD_LIB_VISUALIZATION
+#    define AST_VISUALIZATION_API A_DECL_EXPORT
+#else
+#    define AST_VISUALIZATION_API A_DECL_IMPORT
+#endif
+#define AST_VISUALIZATION_CAPI A_DECL_EXTERN_C AST_VISUALIZATION_API
+
+
+// 可视化 VTK 渲染后端模块导出声明
+#ifdef AST_BUILD_LIB_VISVTK
+#    define AST_VISVTK_API A_DECL_EXPORT
+#else
+#    define AST_VISVTK_API A_DECL_IMPORT
+#endif
+#define AST_VISVTK_CAPI A_DECL_EXTERN_C AST_VISVTK_API
+
+
+
+AST_NAMESPACE_BEGIN
+
+/// 项目公共枚举
+
+
+/// @brief 错误码
+typedef enum EError
+{
+    eError = -1,            ///< 通用错误
+	eNoError = 0,           ///< 没有错误
+    eErrorNullPtr = 1,      ///< 空指针错误
+    eErrorNullInput,        ///< 输入参数是空指针
+    eErrorInvalidParam,     ///< 非法输入参数
+    eErrorNotInit,          ///< 没有初始化
+    eErrorInvalidFile,      ///< 文件格式错误
+    eErrorInvalidType,      ///< 类型错误
+    eErrorInvalidValue,     ///< 值错误
+    eErrorParse,            ///< 解析错误
+    eErrorReadonly,         ///< 只读属性
+    eErrorMaxIter,          ///< 最大迭代次数
+    eErrorDivideByZero,     ///< 除零错误
+    eErrorOutOfRange,       ///< 超出范围
+    eErrorNotFound,         ///< 未找到
+    eErrorNotImplemented,   ///< 未实现
+    eErrorUnsupported,      ///< 不支持的类型
+    eErrorCancelled,        ///< 操作被中止/取消
+    eErrorBusy,             ///< 被占用
+} AEError;
+
+
+
+/// 项目类型前置声明
+
+/*
+ * @note
+ * 下面这些别名用于类型元信息标注，例如：
+ * ```
+ * class Demo{
+ * PROPERTIES:
+ *   time_d   timestamp;        // 时间量纲
+ *   angle_d  heading;          // 角度量纲
+ *   length_d distance;         // 长度量纲
+ * };
+ * ```
+ * 通过这些标注，反射工具(例如libclang)可以识别这些类型，提取其属性元信息，然后生成相应代码，例如动态反射、序列化
+ * 使用 `_d` 后缀，表示 dimension 和 double，避免了使用 `_t` 后缀与标准库 `time_t` 的冲突
+ */ 
+typedef double length_d, mass_d, time_d, area_d, speed_d, force_d, energy_d,
+    power_d, angle_d, angvel_d, temperature_d, density_d, pressure_d, magfield_d;
+
+
+typedef int errc_t;           ///< 错误码类型(error code type)
+typedef double ImpreciseJD;  ///< 儒略日(注意单个double的数值精度不够)
+typedef double ImpreciseMJD; ///< 简约儒略日(注意单个double的数值精度不够)
+typedef uint32_t color_t;    ///< 颜色值
+typedef uint32_t ObjectId;   ///< 对象ID
+typedef double real_t;       ///< 实数类型
+typedef void* ptr_t;         ///< 指针类型
+
+#ifdef __cplusplus
+
+enum EColor: color_t;
+typedef std::array<double, 6> array6d;
+typedef std::array<double, 4> array4d;
+typedef std::array<double, 3> array3d;
+typedef std::array<double, 2> array2d;
+
+
+template<typename _Scalar, size_t N>
+class VectorN;
+
+template<typename _Scalar, size_t M, size_t N>
+class MatrixMN;
+
+typedef VectorN<double, 3> Vector3d;
+typedef VectorN<double, 6> Vector6d;
+
+typedef MatrixMN<double, 3, 3> Matrix3d;
+typedef MatrixMN<double, 8, 8> Matrix8d;
+typedef MatrixMN<double, 6, 6> Matrix6d;
+
+
+template<typename _Char>
+class StringViewBasic;
+
+typedef StringViewBasic<char>  StringView;
+// typedef std::string_view     StringView;
+
+class Color;                 ///< 颜色
+
+class Quaternion;            ///< 四元数
+class Euler;                 ///< 欧拉角
+class AngleAxis;             ///< 轴角
+
+class CartState;             ///< 直角坐标
+class ModOrbElem;            ///< 改进轨道根数
+class OrbElem;               ///< 经典轨道根数
+
+class GeodeticPoint;         ///< 大地坐标
+class LatLon;                ///< 纬度经度坐标
+class LatLonAlt;             ///< 纬经高坐标
+class TrackingCoordinates;   ///< 测量/跟踪坐标(AER)
+using AER = TrackingCoordinates;
+
+class State;                 ///< 状态
+class StateCartesian;        ///< 直角坐标状态
+class StateKeplerian;        ///< 经典轨道状态
+class SpacecraftState;       ///< 航天器状态
+
+class SpacecraftParam;       ///< 航天器参数
+
+class Object;                ///< 对象
+class Class;                 ///< 类
+class Property;              ///< 属性
+using Type = Class;          ///< 类型
+
+class TimePoint;            ///< 时间点
+class TimeList;             ///< 时间点列表
+class TimeInterval;         ///< 时间段
+class TimeIntervalList;     ///< 绝对时间段列表
+class TimePointRange;       ///< 时间点采样范围
+class Interval;             ///< 相对时间段
+class IntervalList;         ///< 相对时间段列表
+class JulianDate;           ///< 儒略日
+class ModJulianDate;        ///< 简约儒略日
+
+class Rotation;              ///< 旋转
+class Transform;             ///< 变换
+class KinematicRotation;     ///< 动力学旋转
+class KinematicTransform;    ///< 动力学变换
+class AccelerationRotation;  ///< 加速度旋转
+class AccelerationTransform; ///< 加速度变换
+
+class Frame;                 ///< 坐标系
+class Axes;                  ///< 坐标轴
+class Point;                 ///< 坐标点
+class Vector;                ///< 向量
+class Angle;                 ///< 角度
+class CelestialBody;         ///< 天体
+class BodyShape;             ///< 天体形状
+using Body = CelestialBody;  
+
+
+class Scenario;              ///< 场景对象
+class Satellite;             ///< 卫星对象
+class Facility;              ///< 设施对象
+class Sensor;                ///< 传感器对象
+class Access;                ///< 访问对象
+
+class EventTime;             ///< 事件时间
+class EventInterval;         ///< 事件时间段
+
+class EventDetector;         ///< 事件检测器
+
+class Identifier;           ///< 标识符
+class Value;                ///< 值
+class Expr;                 ///< 表达式
+class Variable;             ///< 变量
+class Interpreter;          ///< 解释器
+
+class BKVParser;            ///< BKV解析器
+class JsonValue;            ///< JSON值
+
+class Dimension;            ///< 量纲
+class Unit;                 ///< 单位
+class Quantity;             ///< 数量值
+
+class VariantVector;        ///< 变类型向量
+
+#endif
+
+
+inline void nothing(){}
+
+AST_NAMESPACE_END
+
+
+AST_DECL_TYPE_ALIAS(Vector3d)

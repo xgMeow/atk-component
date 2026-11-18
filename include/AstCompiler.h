@@ -1,0 +1,408 @@
+﻿/// @file      AstCompiler.h
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      1.12.2025
+
+#pragma once
+
+
+// 编译器检测宏
+
+// 判断是否是clang
+#if defined(__clang__)
+#   define A_CLANG __clang__
+#endif
+
+// 判断是否是gcc
+#if defined(__GNUC__) && !defined(__clang__)
+#   define A_GCC __GNUC__
+#endif
+
+// 判断是否是intel icc
+#if defined(__INTEL_COMPILER)
+#   define A_ICC __INTEL_COMPILER
+#endif
+
+// 判断是否是mingw
+#if defined(__MINGW32__)
+#   define A_MINGW __MINGW32__
+#endif
+
+// 判断是否是vc
+#if defined(_MSC_VER)
+#   define A_MSVC _MSC_VER
+#endif
+
+// 平台检测宏
+
+// 判断是否是windows
+#if defined(_WIN32)
+#   define A_WINDOWS
+#endif
+
+// 判断是否是linux
+#if defined(__linux__) || defined(__linux)
+#   define A_LINUX
+#endif
+
+// 判断是否是macosx
+#if defined(__MACOSX__) || defined(__APPLE__)
+#   define A_APPLE
+#endif
+
+// 判断是否是wasm
+#if defined(__wasm__)
+#   define A_WASM
+#endif
+
+// 内置函数检测
+#if defined(__has_builtin)
+#   define A_HAS_BUILTIN(builtin) __has_builtin(builtin)
+#else
+#   define A_HAS_BUILTIN(builtin) 0
+#endif
+
+#if defined(__has_attribute)
+#   define A_HAS_ATTRIBUTE(attribute) __has_attribute(attribute)
+#else
+#   define A_HAS_ATTRIBUTE(attribute) 0
+#endif
+
+// 分支预测宏
+#if A_HAS_BUILTIN(__builtin_expect) || defined(A_GCC) || defined(A_CLANG)
+#   define A_LIKELY(expr)   __builtin_expect(!!(expr), 1)
+#   define A_UNLIKELY(expr) __builtin_expect(!!(expr), 0)
+#else
+#   define A_LIKELY(expr)   (expr)
+#   define A_UNLIKELY(expr) (expr)
+#endif
+
+#if A_HAS_BUILTIN(__builtin_unpredictable)
+#   define A_UNPREDICTABLE(expr) __builtin_unpredictable(!!(expr))
+#else
+#   define A_UNPREDICTABLE(expr) (expr)
+#endif
+
+// 内联控制宏
+
+#if A_MSVC || A_ICC
+#   define A_STRONG_INLINE __forceinline
+#else
+#   define A_STRONG_INLINE inline
+#endif
+
+
+#if A_HAS_ATTRIBUTE(always_inline) || defined(A_GCC) || defined(A_CLANG)
+#   define A_ALWAYS_INLINE __attribute__((__always_inline__)) inline
+#else
+#   define A_ALWAYS_INLINE A_STRONG_INLINE
+#endif
+
+#if A_HAS_ATTRIBUTE(noinline) || defined(A_GCC) || defined(A_CLANG)
+#   define A_NO_INLINE __attribute__((__noinline__))
+#elif defined(A_MSVC)
+#   define A_NO_INLINE __declspec(noinline)
+#else
+#   define A_NO_INLINE
+#endif
+
+
+// DLL 导出导入
+
+#ifdef _WIN32
+#   define A_DECL_EXPORT __declspec(dllexport)
+#   define A_DECL_IMPORT __declspec(dllimport)
+#elif defined(SWIG) // swig 封装时，将其定义为空宏
+#   define A_DECL_EXPORT
+#   define A_DECL_IMPORT
+#else
+#   define A_DECL_EXPORT __attribute__((visibility("default")))
+#   define A_DECL_IMPORT __attribute__((visibility("default")))
+#endif
+
+
+// 按C函数名称导入导出，不使用c++修饰名： extern "C"
+
+#ifdef __cplusplus
+#   define A_DECL_EXTERN_C extern "C"
+#   define A_CLINKAGE_BEGIN extern "C" {        
+#   define A_CLINKAGE_END }
+#else
+#   define A_DECL_EXTERN_C
+#   define A_CLINKAGE_BEGIN
+#   define A_CLINKAGE_END
+#endif
+
+
+// 线程本地存储 thread local storage
+
+#if defined(thread_local) || defined(__cplusplus) && __cplusplus >= 201103L
+#   define A_THREAD_LOCAL thread_local
+#elif __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_THREADS__)
+#   define A_THREAD_LOCAL _Thread_local
+#elif defined(_MSC_VER)  
+#   define A_THREAD_LOCAL __declspec(thread)
+#elif defined(__GNUC__) 
+#   define A_THREAD_LOCAL __thread
+#endif
+
+
+// 字符串化
+
+#define A_STR(S) #S
+
+
+
+// 函数属性宏
+#if A_HAS_ATTRIBUTE(const) || defined(A_GCC) || defined(A_CLANG)
+#   define A_CONST __attribute__((__const__))
+#else
+#   define A_CONST
+#endif
+
+#if A_HAS_ATTRIBUTE(pure) || defined(A_GCC) || defined(A_CLANG)
+#   define A_PURE __attribute__((__pure__))
+#else
+#   define A_PURE
+#endif
+
+#if A_HAS_ATTRIBUTE(noreturn) || defined(A_GCC) || defined(A_CLANG)
+#   define A_NORETURN __attribute__((__noreturn__))
+#elif defined(A_MSVC)
+#   define A_NORETURN __declspec(noreturn)
+#else
+#   define A_NORETURN
+#endif
+
+#if A_HAS_ATTRIBUTE(malloc) || defined(A_GCC) || defined(A_CLANG)
+#   define A_MALLOC __attribute__((__malloc__))
+#else
+#   define A_MALLOC
+#endif
+
+#if A_HAS_ATTRIBUTE(warn_unused_result) || defined(A_GCC) || defined(A_CLANG)
+#   define A_NODISCARD __attribute__((__warn_unused_result__))
+#elif defined(A_MSVC) && (_MSC_VER >= 1700)
+#   define A_NODISCARD _Check_return_
+#else
+#   define A_NODISCARD
+#endif
+
+// 优化提示
+#if A_HAS_BUILTIN(__builtin_assume)
+#   define A_ASSUME(expr) __builtin_assume(expr)
+#elif defined(A_MSVC)
+#   define A_ASSUME(expr) __assume(expr)
+#else
+#   define A_ASSUME(expr) ((void)((expr) ? 1 : 0))
+#endif
+
+#if A_HAS_BUILTIN(__builtin_unreachable) || defined(A_GCC) || defined(A_CLANG)
+#   define A_UNREACHABLE() __builtin_unreachable()
+#elif defined(A_MSVC)
+#   define A_UNREACHABLE() __assume(0)
+#else
+#   define A_UNREACHABLE() 
+#endif
+
+
+
+// 弃用标记
+#if A_HAS_ATTRIBUTE(deprecated) || defined(A_GCC) || defined(A_CLANG)
+#  define A_DEPRECATED(msg) __attribute__((__deprecated__(msg)))
+#elif defined(A_MSVC)
+#  define A_DEPRECATED(msg) __declspec(deprecated(msg))
+#else
+#   if _HAS_CXX17 || __cplusplus>201402L
+#       define A_DEPRECATED(msg) [[deprecated]]
+#   else
+#       define A_DEPRECATED(msg)
+#   endif
+#endif
+
+
+// 类型安全检查
+#if A_HAS_ATTRIBUTE(nonnull) || defined(A_GCC) || defined(A_CLANG)
+#   define A_NON_NULL(...) __attribute__((__nonnull__(__VA_ARGS__)))
+#else
+#   define A_NON_NULL(...)
+#endif
+
+// 限制指针
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+#   define A_RESTRICT restrict
+#elif defined(A_MSVC)
+#   define A_RESTRICT __restrict
+#elif defined(A_GCC) || defined(A_CLANG)
+#   define A_RESTRICT __restrict__
+#else
+#   define A_RESTRICT
+#endif
+
+// 标记变量为未使用，避免编译器警告
+#define A_UNUSED(x) (void)(x);  
+
+// 处理 MSVC 编译器的 _MSVC_LANG 宏
+#if defined(_MSVC_LANG)
+// 有些 MSVC 编译器的 c++14 标准实现不全，会导致编译问题，在这里将其视为与 c++11 兼容
+#   if _MSVC_LANG == 201402L  
+#       define A_CPLUSPLUS 201103L
+#       define _A_CXX14         // 用于标识标准实现不完全的 c++14
+#   else
+#       define A_CPLUSPLUS _MSVC_LANG
+#   endif
+#elif defined(_MSC_VER) && (_MSC_VER >= 1900)
+#   define A_CPLUSPLUS 201103L
+#elif defined(__cplusplus)
+#   define A_CPLUSPLUS __cplusplus
+#else
+#   define A_CPLUSPLUS 0
+#endif
+
+// C++ 版本宏
+#if A_CPLUSPLUS >= 202002L
+#   define A_CXX_VERSION 2020
+#elif A_CPLUSPLUS >= 201703L
+#   define A_CXX_VERSION 2017
+#elif A_CPLUSPLUS >= 201402L
+#   define A_CXX_VERSION 2014
+#elif A_CPLUSPLUS >= 201103L
+#   define A_CXX_VERSION 2011
+#else
+#   define A_CXX_VERSION 2003
+#endif
+
+#if A_CXX_VERSION >= 2020
+#   define A_CXX20
+#endif
+
+#if A_CXX_VERSION >= 2017
+#   define A_CXX17
+#endif
+
+#if A_CXX_VERSION >= 2014
+#   define A_CXX14
+#endif
+
+#if A_CXX_VERSION >= 2011
+#   define A_CXX11
+#endif
+
+#ifdef A_CXX17
+#   define A_CONSTEXPR_CXX17 constexpr
+#else
+#   define A_CONSTEXPR_CXX17
+#endif
+
+#ifdef A_CXX14
+#   define A_CONSTEXPR_CXX14 constexpr
+#   define A_STATIC_ASSERT_CXX14(...) static_assert(__VA_ARGS__)
+#else
+#   define A_CONSTEXPR_CXX14
+#   define A_STATIC_ASSERT_CXX14(...)
+#endif
+
+
+
+#ifdef _WIN32
+#   define A_DEBUG_BREAK() __debugbreak()
+#else
+#   include <signal.h>         // for raise and SIGTRAP
+#   define A_DEBUG_BREAK() ::raise(SIGTRAP)
+#endif
+
+
+// 警告抑制宏 — 用于暂时屏蔽某个源文件或代码段内的全部编译警告
+// 用法：在源文件开头或需要屏蔽的代码段前后分别放置 BEGIN / END 宏
+#if defined(A_MSVC) && !defined(A_CLANG) // clang 在 msvc 目标下同样会定义 _MSC_VER，必须显式排除
+#   define A_SUPPRESS_WARNINGS_BEGIN __pragma(warning(push, 0))
+#   define A_SUPPRESS_WARNINGS_END   __pragma(warning(pop))
+#elif defined(A_CLANG)
+#   define A_SUPPRESS_WARNINGS_BEGIN                        \
+        _Pragma("clang diagnostic push")                    \
+        _Pragma("clang diagnostic ignored \"-Weverything\"")\
+        _Pragma("clang diagnostic ignored \"-unused-but-set-variable\"")
+
+#   define A_SUPPRESS_WARNINGS_END                           \
+        _Pragma("clang diagnostic pop")
+
+#elif defined(A_GCC)
+#   define _A_SUPPRESS_WARNINGS_PUSH \
+        _Pragma("GCC diagnostic push")
+
+#   define _A_SUPPRESS_WARNINGS_CXX \
+        _Pragma("GCC diagnostic ignored \"-Weffc++\"")\
+        _Pragma("GCC diagnostic ignored \"-Wnon-virtual-dtor\"")
+
+#   define _A_SUPPRESS_WARNINGS_C\
+        _Pragma("GCC diagnostic ignored \"-Wpragmas\"")\
+        _Pragma("GCC diagnostic ignored \"-Wall\"")\
+        _Pragma("GCC diagnostic ignored \"-Wextra\"")\
+        _Pragma("GCC diagnostic ignored \"-Wpedantic\"")\
+        _Pragma("GCC diagnostic ignored \"-Wconversion\"")\
+        _Pragma("GCC diagnostic ignored \"-Wsign-conversion\"")\
+        _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")\
+        _Pragma("GCC diagnostic ignored \"-Wunused-but-set-variable\"")\
+        _Pragma("GCC diagnostic ignored \"-Wunused-variable\"")\
+        _Pragma("GCC diagnostic ignored \"-Wunused-result\"")\
+        _Pragma("GCC diagnostic ignored \"-Wformat=\"")\
+        _Pragma("GCC diagnostic ignored \"-Wstringop-truncation\"")
+
+#   ifdef __cplusplus
+#       define A_SUPPRESS_WARNINGS_BEGIN \
+              _A_SUPPRESS_WARNINGS_PUSH\
+              _A_SUPPRESS_WARNINGS_C\
+              _A_SUPPRESS_WARNINGS_CXX
+#   else
+#       define A_SUPPRESS_WARNINGS_BEGIN \
+              _A_SUPPRESS_WARNINGS_PUSH\
+              _A_SUPPRESS_WARNINGS_C
+#   endif
+
+
+#   define A_SUPPRESS_WARNINGS_END                           \
+        _Pragma("GCC diagnostic pop")
+#else
+#   define A_SUPPRESS_WARNINGS_BEGIN
+#   define A_SUPPRESS_WARNINGS_END
+#endif
+
+
+/// 为支持随机访问的数值类型容器类型定义迭代器标准函数
+#define A_DEF_ITERABLE(Scalar, Data, Size)                                      \
+    size_t size() const noexcept{ return (Size) ;}                              \
+    Scalar* data() noexcept{return (Data);}                                     \
+    Scalar const* data() const{return (Data);}                                  \
+    Scalar* begin() noexcept{ return data(); }                                  \
+    Scalar* end() noexcept{ return (Data) + (Size); }                           \
+    Scalar const * begin() const noexcept{ return data(); }                     \
+    Scalar const* end() const noexcept{ return (Data) + (Size); }               \
+    Scalar const* cbegin() const noexcept{ return data(); }                     \
+    Scalar const* cend() const noexcept{ return (Data) + (Size); }              \
+    Scalar operator[](size_t idx) const noexcept{return data()[idx];}           \
+    Scalar& operator[](size_t idx) noexcept{return data()[idx];}                \
+
+
+/// 为包含数值类型的POD类型定义迭代器标准函数
+#define A_DEF_POD_ITERABLE(Scalar)                                      \
+    A_DEF_ITERABLE(Scalar, (Scalar*)this, sizeof(*this)/sizeof(Scalar))
+
+/// 禁用拷贝构造和赋值
+#define A_DISABLE_COPY(Class) \
+    Class(const Class&) = delete; \
+    Class& operator=(const Class&) = delete;
+
+
+/// 为枚举类型定义位操作符
+/// @note __underlying_type 是事实标准的编译器内建类型萃取，MSVC 2015+、GCC 4.x+、Clang 3.x+ 均支持
+#define A_ENUM_CLASS_FLAGS(Enum) \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum& operator|=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs | (__underlying_type(Enum))Rhs); } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum& operator&=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs & (__underlying_type(Enum))Rhs); } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum& operator^=(Enum& Lhs, Enum Rhs) { return Lhs = (Enum)((__underlying_type(Enum))Lhs ^ (__underlying_type(Enum))Rhs); } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum  operator| (Enum  Lhs, Enum Rhs) { return (Enum)((__underlying_type(Enum))Lhs | (__underlying_type(Enum))Rhs); } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum  operator& (Enum  Lhs, Enum Rhs) { return (Enum)((__underlying_type(Enum))Lhs & (__underlying_type(Enum))Rhs); } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum  operator^ (Enum  Lhs, Enum Rhs) { return (Enum)((__underlying_type(Enum))Lhs ^ (__underlying_type(Enum))Rhs); } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 bool  operator! (Enum  E)             { return !(__underlying_type(Enum))E; } \
+	A_ALWAYS_INLINE A_CONSTEXPR_CXX14 Enum  operator~ (Enum  E)             { return (Enum)~(__underlying_type(Enum))E; }
+

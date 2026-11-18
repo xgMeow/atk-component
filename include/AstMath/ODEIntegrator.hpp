@@ -1,0 +1,217 @@
+﻿/// @file      ODEIntegrator.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-01-16
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstMath/ODEStateObserver.hpp"
+#include "AstMath/ODEEventDetectorList.hpp"
+#include "AstMath/ODEStateObserverList.hpp"
+#include "AstMath/ODEInnerStateObserver.hpp"
+#include "AstMath/OrdinaryDifferentialEquation.hpp"
+#include "AstUtil/Object.hpp"
+#include "AstUtil/ObjectNamed.hpp"
+#include <vector>
+#include <type_traits>
+
+AST_NAMESPACE_BEGIN
+
+class ODEEventDetector;
+
+/// @brief ODE 积分器接口类
+/// @details 积分器是ODE求解的基础类，提供了积分ODE的通用接口。
+/// @ingroup ODE
+class AST_MATH_API IODEIntegrator: public ObjectNamed
+{
+public:
+    IODEIntegrator() = default;
+    virtual ~IODEIntegrator() {};
+    IODEIntegrator(const IODEIntegrator&) = delete;
+    IODEIntegrator& operator=(const IODEIntegrator&) = delete;
+
+    /// @brief 初始化积分器
+    /// @details 初始化积分器，设置ODE的维度和步长等参数
+    /// @param ode 常微分方程对象
+    virtual errc_t initialize(ODE& ode) = 0;
+
+
+    /// @brief 从当前时间t开始积分到最终时间tf，直到事件检测器触发事件或者积分到最终时间tf，并将积分结果存储在y中
+    /// @param[in] ode 常微分方程对象
+    /// @param[in,out] y 状态向量
+    /// @param[in,out] t 当前时间
+    /// @param[in] tf 最终时间
+    virtual errc_t integrate(ODE& ode, double* y,double& t, double tf) = 0;
+
+
+    /// @brief 朝目标时刻执行单步积分
+    /// @details 从当前时间t朝着最终时间tf方向积分一步，并将积分结果存储在y中
+    ///        如果当前时间t已经到达最终时间tf，则直接返回
+    ///        如果是变步长积分器，步长会根据误差要求自动调整
+    ///        如果是定步长积分器，步长会固定为初始步长
+    /// @param[in] ode 常微分方程对象
+    /// @param[in,out] y 状态向量
+    /// @param[in,out] t 当前时间
+    /// @param[in] tf 最终时间
+    virtual errc_t integrateOneStep(ODE& ode, double* y, double& t, double tf) = 0;
+
+    /// @brief 按指定步长执行一步积分（执行单次步进）
+    /// @details 这个函数是积分器最底层的实现，一般是采用多步法对ODE进行单次步进
+    /// @param ode 常微分方程对象
+    /// @param[in,out] y 状态向量
+    /// @param t0 当前时间
+    /// @param step 时间步长
+    virtual errc_t singleStep(ODE& ode, double* y, double t0, double step) = 0;
+};
+
+
+/// @brief ODE 积分器
+/// @details 积分器是ODE求解的基础类，提供了积分ODE的通用接口。
+/// @ingroup ODE
+class AST_MATH_API ODEIntegrator : public IODEIntegrator
+{
+public:
+    ODEIntegrator() = default;
+    ~ODEIntegrator() override;
+
+    using IODEIntegrator::integrate;
+
+    errc_t initialize(ODE& ode) override;
+
+
+    /// @brief 积分ODE
+    /// @details 积分ODE，将积分结果存储在y中
+    ///          同时将时间点和状态向量存储在xlist和ylist中
+    /// @param[in] ode 常微分方程对象
+    /// @param[in,out] y 状态向量
+    /// @param[in,out] t 当前时间
+    /// @param[in] tf 最终时间
+    /// @param[out] xlist 时间点列表
+    /// @param[out] ylist 状态向量列表
+    errc_t integrate(
+        ODE& ode, double* y, double& t, double tf,
+        std::vector<double>& xlist, std::vector<std::vector<double>>& ylist
+    );
+
+    /// @brief 积分ODE
+    /// @details 积分ODE，将积分结果存储在y和t中
+    /// @param[in] ndim ODE的维度
+    /// @param[in] func 常微分方程
+    /// @param[in,out] y 状态向量
+    /// @param[in,out] t 当前时间
+    /// @param[in] tf 最终时间
+    template<typename Func>
+    errc_t integrate(int ndim, Func func, double* y, double& t, double tf)
+    {
+        auto ode = make_ode(ndim, func);
+        return integrate(ode, y, t, tf);
+    }
+
+    /// @brief 添加事件检测器
+    /// @details 添加一个事件检测器，用于检测ODE的事件
+    /// @param detector 事件检测器对象
+    /// @bug 目前只能添加在堆上动态创建的事件检测器，如果添加栈上的事件检测器，会导致内存问题
+    void addEventDetector(ODEEventDetector* detector);
+
+    /// @brief 添加事件检测器（泛型模板）
+    /// @details 添加一个事件检测器，用于检测ODE的事件
+    /// @param func 事件检测函数
+    template<typename Func>
+    typename std::enable_if<!std::is_base_of<ODEEventDetector, typename std::remove_pointer<Func>::type>::value, ODEEventDetector*>::type
+    addEventDetector(Func func) {
+        ODEEventDetector* detector = new ODEEventDetectorGeneric<Func>(std::move(func));
+        addEventDetector(detector);
+        return detector;
+    }
+
+    /// @brief 删除事件检测器
+    /// @details 删除一个事件检测器
+    /// @param detector 事件检测器对象
+    void removeEventDetector(ODEEventDetector* detector);
+
+    /// @brief 清除所有事件检测器
+    /// @details 清除所有添加的事件检测器
+    void clearEventDetectors();
+
+    /// @brief 清除所有状态观察者
+    /// @details 清除所有添加的状态观察者
+    void clearStateObservers();
+
+    /// @brief 添加状态观察者
+    /// @details 添加一个状态观察者，用于观察ODE的状态
+    /// @param observer 状态观察者对象
+    /// @bug 目前只能添加在堆上动态创建的状态观察者，如果添加栈上的状态观察者，会导致内存问题
+    void addStateObserver(ODEStateObserver* observer);
+
+
+    #ifndef SWIG
+    /// @brief 添加状态观察者（泛型模板）
+    /// @details 添加一个状态观察者，用于观察ODE的状态
+    /// @param func 状态观察函数
+    template<typename Func>
+    typename std::enable_if<!std::is_base_of<ODEStateObserver, typename std::remove_pointer<Func>::type>::value, ODEStateObserver*>::type
+    addStateObserver(Func func) {
+        auto observer = new ODEStateObserverGeneric<Func>(func);
+        addStateObserver(observer);
+        return observer;
+    }
+    #endif
+
+    /// @brief 删除状态观察者
+    /// @details 删除一个状态观察者
+    /// @param observer 状态观察者对象
+    void removeStateObserver(ODEStateObserver* observer);
+
+    /// @brief 获取ODE方程
+    /// @details 获取当前积分器关联的ODE方程
+    /// @return ODE方程
+    ODE* getODE() { return ode_; }
+
+    /// @brief 获取当前积分步的开始状态
+    /// @details 获取当前积分步的开始状态
+    /// @return 当前积分步的开始状态
+    double* stateAtStepStart() { return stateAtStepStart_; }
+
+    /// @brief 获取当前积分步的结束状态
+    /// @details 获取当前积分步的结束状态
+    /// @return 当前积分步的结束状态
+    double* stateAtStepEnd() { return stateAtStepEnd_; }
+
+    /// @brief 获取当前积分步的开始时间
+    /// @details 获取当前积分步的开始时间
+    /// @return 当前积分步的开始时间
+    double& timeAtStepStart() { return timeAtStepStart_; }
+
+    /// @brief 获取当前积分步的结束时间
+    /// @details 获取当前积分步的结束时间
+    /// @return 当前积分步的结束时间
+    double& timeAtStepEnd() { return timeAtStepEnd_; }
+
+    /// @brief 获取临时状态向量
+    /// @details 获取当前积分步的临时状态向量
+    /// @return 当前积分步的临时状态向量
+    double* stateTemp() { return stateTemp_; }
+protected:
+    errc_t integrateOneFixedStep(ODE& ode, double absStepSize, double* y, double& t, double tf);
+    errc_t integrateFixedStep(ODE& ode, double absStepSize, double* y, double& t, double tf, int* pNumSteps=nullptr);
+protected:
+    friend class ODEInnerStateObserver;
+    void initWorkStateObserver();
+    A_DISABLE_COPY(ODEIntegrator);
+protected:
+    ODE* ode_{nullptr};                                     ///< ODE方程
+    ODEStateObserver* workStateObserver_{nullptr};          ///< 状态观察者
+    ODEEventDetectorList eventDetectorList_{};               ///< 事件检测器列表
+    ODEStateObserverList stateObserverList_{};               ///< 状态观察者列表
+    ODEInnerStateObserver* innerStateObserver_{nullptr};    ///< 内部状态观察者
+    double* stateAtStepStart_{nullptr};                     ///< 当前积分步的开始状态
+    double* stateAtStepEnd_{nullptr};                       ///< 当前积分步的结束状态
+    double* stateTemp_{nullptr};                            ///< 临时状态向量
+    double timeAtStepStart_{0.0};                           ///< 当前积分步的开始时间   
+    double timeAtStepEnd_{0.0};                             ///< 当前积分步的结束时间
+};
+
+
+AST_NAMESPACE_END

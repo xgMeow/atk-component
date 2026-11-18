@@ -1,0 +1,117 @@
+﻿/// @file      DataPort.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-01-17
+
+#pragma once
+
+#include "AstGlobal.h"
+// #include "AstUtil/Dimension.hpp"    // for Dimension
+
+AST_NAMESPACE_BEGIN
+
+typedef ptr_t  signal_t;                // 信号(指向数据的指针)
+typedef signal_t* signalsignal_t;       // 信号指针(指向信号的指针/指向数据指针的指针)
+
+/// @brief 数据端口
+class DataPort
+{
+public:
+    enum EValueType: int8_t{
+        eInvalid=-1,        ///< 无效数据类型
+        eDouble=0,          ///< double值
+        eFloat=1,           ///< float值
+        eInt=2,             ///< int值
+        eBoolean=3,         ///< boolean值
+    };
+    enum EModeType: int8_t {
+        eAny = -1,         ///< 任意模式
+        eAssign = 0,       ///< 赋值模式（=），单一贡献者
+        eAccumulate = 1    ///< 累加模式（+=），多贡献者
+    };
+    // DataPort() = default;
+    DataPort(Identifier* name, signal_t* signalPtr, int width, EValueType type, EModeType mode = eAny)
+        : name_(name), signalPtr_(signalPtr), width_(width), type_(type), mode_(mode)
+    {}
+    ~DataPort() = default;
+
+    AST_CORE_API
+    static errc_t connect(DataPort* src, DataPort* dst);
+
+    AST_CORE_API
+    errc_t connect(DataPort* dst);
+
+    /// @brief 设置数据端口的宽度
+    /// @param width 数据宽度
+    void setWidth(int width){ width_ = width; }
+
+    /// @brief 获取数据端口的宽度
+    /// @return 数据宽度
+    int getWidth() const{ return width_; }
+
+    /// @brief 获取数据端口的数据类型
+    /// @return 数据类型
+    EValueType getDataType() const{ return type_; }
+
+    /// @brief 获取数据端口的实数值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @return 实数值指针
+    double* getSignalDouble() const{ return this->getSignal<double>(); }
+
+    /// @brief 设置数据端口的实数值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @param signal 信号(指向数据的指针)
+    void setSignalDouble(double* signal){ this->setSignal<double>(signal); }
+
+    /// @brief 获取数据端口的整数值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @return 整数值指针
+    int* getSignalInt() const{ return this->getSignal<int>(); }
+
+    /// @brief 设置数据端口的整数值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @param signal 信号(指向数据的指针)
+    void setSignalInt(int* signal){ this->setSignal<int>(signal); }
+
+    /// @brief 获取数据端口的向量3值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @return 向量3值指针
+    Vector3d* getSignalVector3d() const{ return this->getSignal<Vector3d>(); }
+
+    /// @brief 设置数据端口的向量3值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @param signal 信号(指向数据的指针)
+    void setSignalVector3d(Vector3d* signal){ this->setSignal<Vector3d>(signal); }
+
+    /// @brief 获取数据端口的任意类型值指针
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @return 任意类型值指针
+    template<typename T=void>
+    T* getSignal() const{ return (T*)*signalPtr_; }
+
+    /// @brief 设置数据端口的信号指针(指向数据指针的指针)
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @param signal 信号(指向数据的指针)
+    template<typename T=void>
+    void setSignal(T* signal){ *signalPtr_ = signal; }
+
+    /// @brief 获取数据端口的信号指针(指向数据指针的指针)
+    /// @warning 该接口不保证类型安全，调用者需自行确保类型匹配
+    /// @return 信号指针(指向数据指针的指针)
+    signal_t* getSignalPtr() const{ return signalPtr_; }
+
+    /// @brief 获取数据端口的数据模式
+    /// @return 数据模式
+    EModeType getMode() const{ return mode_; }
+public:
+    Identifier* name_;              ///< 端口名称
+    signal_t*   signalPtr_;         ///< 信号指针(指向数据指针的指针)
+    int         width_;             ///< 数据宽度
+    EValueType  type_;              ///< 数据类型
+    EModeType   mode_{eAny};        ///< 数据模式
+    // Dimension   dimension_;      ///< 数据量纲 @todo: 支持数据量纲
+};
+
+
+AST_NAMESPACE_END

@@ -1,0 +1,310 @@
+﻿/// @file      Quantity.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2025-12-15
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/Unit.hpp"
+#include <string>       
+#include <limits>       // for std::numeric_limits
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @ingroup Util
+    @defgroup Quantity 单位和数量分析
+    @brief 提供单位和数量分析的功能，包括单位和数量值的加法、减法、乘法、除法等操作。
+*/
+
+
+/*!
+    @addtogroup Quantity
+    @{
+*/
+
+
+class Quantity;
+
+/// @brief 数量值加法
+/// @param q1 数量值1
+/// @param q2 数量值2
+/// @return 数量值1与数量值2的和
+AST_UTIL_API Quantity aQuantityAdd(const Quantity& q1, const Quantity& q2);
+
+/// @brief 数量值减法
+/// @param q1 数量值1
+/// @param q2 数量值2
+/// @return 数量值1与数量值2的差
+AST_UTIL_API Quantity aQuantitySub(const Quantity& q1, const Quantity& q2);
+
+
+/// @brief 数量值乘法
+/// @param q1 数量值1
+/// @param q2 数量值2
+/// @return 数量值1与数量值2的积
+AST_UTIL_API Quantity aQuantityMul(const Quantity& q1, const Quantity& q2);
+
+
+/// @brief 数量值单位乘法
+/// @param q 数量值
+/// @param unit 单位
+/// @return 数量值与单位的积
+AST_UTIL_API Quantity aQuantityMul(const Quantity& q, const Unit& unit);
+
+
+/// @brief 数量值除法
+/// @param q1 数量值1
+/// @param q2 数量值2
+/// @return 数量值1与数量值2的商
+AST_UTIL_API Quantity aQuantityDiv(const Quantity& q1, const Quantity& q2);
+
+
+/// @brief 数量值单位除法
+/// @param q 数量值
+/// @param unit 单位
+/// @return 数量值与单位的商
+AST_UTIL_API Quantity aQuantityDiv(const Quantity& q, const Unit& unit);
+
+
+/// @brief 数量值简化
+/// @param q 数量值
+AST_UTIL_API void aQuantityReduce(Quantity& q);
+
+
+/// @brief 数量值转换为字符串
+/// @param q 数量值
+/// @return 数量值的字符串表示
+AST_UTIL_API std::string aQuantityToString(const Quantity& q);
+
+A_ALWAYS_INLINE std::string aFormatQuantity(const Quantity& q)
+{
+    return aQuantityToString(q);
+}
+
+/// @brief 单位乘法运算符
+/// @param value 数值
+/// @param unit 单位
+/// @return 新单位
+AST_UTIL_API Quantity operator*(double value, const Unit& unit);
+
+
+
+/// @brief 数量值
+/// @details 本类表示一个数量值，由数值和量词/单位组成
+/// 可以用于表示 `1 km`、`2 m/s`、`3 day` 等数量值
+/// @ingroup Quantity
+class Quantity
+{
+public:
+    /// @brief 无效数量值
+    static Quantity NaN()
+    {
+        // 无效数量值使用NaN表示
+        return Quantity(std::numeric_limits<double>::quiet_NaN(), Unit::NaN());
+    }
+
+    /// @brief 零数量值
+    static Quantity Zero()
+    {
+        return Scalar(0.0);
+    }
+
+    /// @brief 单位数量值
+    static Quantity One()
+    {
+        return Scalar(1.0);
+    }
+
+    /// @brief 标量数量值
+    static Quantity Scalar(double value)
+    {
+        return Quantity(value, Unit::None());
+    }
+
+public:
+    Quantity()
+        : magnitude_(0.0), unit_{}
+    {}
+    /// @brief 构造函数
+    /// @param magnitude 数值大小
+    /// @param unit 单位
+    Quantity(double magnitude, const Unit& unit)
+        : magnitude_(magnitude), unit_(unit)
+    {}
+    /// @brief 构造函数
+    /// @param magnitude 数值大小
+    /// @param unit 单位
+    explicit Quantity(double magnitude)
+        : magnitude_(magnitude), unit_(Unit::None())
+    {}
+public:
+    /// @brief 获取数值大小
+    /// @return 数值大小
+    double magnitude() const { return magnitude_; }
+
+    /// @brief 获取可修改的数值大小
+    /// @return 可修改的数值大小
+    double& magnitude() { return magnitude_; }
+
+    /// @brief 获取数值大小
+    /// @return 数值大小
+    double getMagnitude() const { return magnitude_; }
+
+    /// @brief 设置数值大小
+    /// @param value 数值大小
+    void setMagnitude(double value) { magnitude_ = value; }
+
+    /// @brief 获取单位
+    /// @return 单位
+    const Unit& unit() const { return unit_; }
+
+    /// @brief 获取可修改的单位
+    /// @return 可修改的单位
+    Unit& unit() { return unit_; }
+
+    /// @brief 获取单位
+    /// @return 单位
+    const Unit& getUnit() const { return unit_; }
+
+    /// @brief 设置单位
+    /// @details 不会改变当前数量值的数值大小，仅改变单位表示
+    /// 例如将1000m转换为1000km，将1000kg转换为1000t等
+    /// @param unit 单位
+    void setUnit(const Unit& unit) { unit_ = unit; }
+
+    /// @brief 切换当前单位
+    /// @details 切换当前单位后，数量值会自动转换为该单位
+    /// 例如将1000m转换为1km，将1000kg转换为1t等
+    /// @param unit 当前单位
+    void changeUnit(const Unit& unit);
+
+    /// @brief 获取量纲
+    /// @return 量纲
+    Dimension dimension() const { return unit_.dimension(); }
+
+    /// @brief 获取国际单位表示的值
+    /// @return 国际单位表示的值
+    double getValueSI() const { return unit_.toSI(magnitude_); }
+
+    /// @brief 设置国际单位表示的值
+    /// @details 只会改变数量值的数值大小，不会改变数量值的单位
+    /// @param value 国际单位表示的值
+    void setValueSI(double value) { magnitude_ = unit_.fromSI(value); }
+
+    /// @brief 获取指定单位下的值
+    /// @param unit 指定单位
+    /// @return 指定单位下的值
+    double getValueInUnit(const Unit& unit) const { return unit_.convertTo(magnitude_, unit); }
+
+    /// @brief 设置指定单位下的值
+    /// @details 只会改变数量值的数值大小，不会改变数量值的单位
+    /// @param value 指定单位下的值
+    /// @param unit 单位
+    void setValueInUnit(double value, const Unit& unit) { magnitude_ = unit_.convertFrom(value, unit); }
+
+    /// @brief 设置数值大小和单位
+    /// @param value 数值大小
+    /// @param unit 单位
+    void setValueUnit(double value, const Unit& unit) { magnitude_ = value; unit_ = unit; }
+
+    /// @brief 检查数量值是否有效
+    /// @return 如果数量值有效则返回true，否则返回false
+    bool isValid() const { return unit_.isValid(); }
+
+    /// @brief 检查数量值是否相等
+    /// @param q 数量值
+    /// @return 如果数量值相等则返回true，否则返回false
+    bool operator ==(const Quantity& q) const{
+        return this->dimension() == q.dimension() && this->getValueSI() == q.getValueSI();
+    }
+    /// @brief 检查数量值是否不相等
+    /// @param q 数量值
+    /// @return 如果数量值不相等则返回true，否则返回false
+    bool operator !=(const Quantity& q) const{return !(*this == q);}
+
+    /// @brief 检查数量值是否等于标量
+    /// @param value 标量值
+    /// @return 如果数量值等于标量值则返回true，否则返回false
+    bool operator == (double value) const{
+        return this->dimension() == EDimension::eUnit && this->getValueSI() == value;
+    }
+
+    /// @brief 检查数量值是否不等于标量
+    /// @param value 标量值
+    /// @return 如果数量值不等于标量值则返回true，否则返回false
+    bool operator != (double value) const{
+        return !(*this == value);
+    }
+
+    /// @brief 数量值取倒数
+    Quantity invert() const { return Quantity(1.0 / magnitude_, unit_.invert()); }
+
+    /// @brief 数量值取正
+    Quantity operator+() const { return *this; }
+    /// @brief 数量值取负
+    Quantity operator-() const { return Quantity(-magnitude_, unit_); }
+
+    /// @brief 数量值缩放
+    Quantity operator*(double scale) const { return Quantity(magnitude_ * scale, unit_); }
+    /// @brief 数量值除法
+    Quantity operator/(double scale) const { return Quantity(magnitude_ / scale, unit_); }
+    /// @brief 数量值缩放赋值
+    Quantity& operator*=(double scale) { magnitude_ *= scale; return *this; }
+    /// @brief 数量值除法赋值
+    Quantity& operator/=(double scale) { magnitude_ /= scale; return *this; }
+    /// @brief 数量值单位乘法
+    Quantity operator*(const Unit& unit) const { return aQuantityMul(*this, unit); }
+    /// @brief 数量值单位除法
+    Quantity operator/(const Unit& unit) const { return aQuantityDiv(*this, unit); }
+    /// @brief 数量值单位乘法赋值
+    Quantity& operator*=(const Unit& unit) { *this = aQuantityMul(*this, unit); return *this; }
+    /// @brief 数量值单位除法赋值
+    Quantity& operator/=(const Unit& unit) { *this = aQuantityDiv(*this, unit); return *this; }
+
+
+    /// @brief 数量值加法
+    Quantity operator+(const Quantity& q) const { return aQuantityAdd(*this, q); }
+    /// @brief 数量值减法
+    Quantity operator-(const Quantity& q) const { return aQuantitySub(*this, q); }
+    /// @brief 数量值乘法
+    Quantity operator*(const Quantity& q) const { return aQuantityMul(*this, q); }
+    /// @brief 数量值除法
+    Quantity operator/(const Quantity& q) const { return aQuantityDiv(*this, q); }
+    /// @brief 数量值加法赋值
+    Quantity& operator+=(const Quantity& q) { *this = aQuantityAdd(*this, q); return *this; }
+    /// @brief 数量值减法赋值
+    Quantity& operator-=(const Quantity& q) { *this = aQuantitySub(*this, q); return *this; }
+    /// @brief 数量值乘法赋值
+    Quantity& operator*=(const Quantity& q) { *this = aQuantityMul(*this, q); return *this; }
+    /// @brief 数量值除法赋值
+    Quantity& operator/=(const Quantity& q) { *this = aQuantityDiv(*this, q); return *this; }
+    /// @brief 数量值转换为字符串
+    /// @return 数量值的字符串表示
+    std::string toString() const{return aQuantityToString(*this);}
+private:
+    double magnitude_;
+    Unit unit_;
+};
+
+inline void Quantity::changeUnit(const Unit &unit)
+{
+    magnitude_ = unit_.convertTo(magnitude_, unit);
+    unit_ = unit;
+}
+
+inline Quantity operator*(double value, const Quantity& q)
+{
+    return q * value;
+}
+
+inline Quantity operator/(double value, const Quantity& q)
+{
+    return value * q.invert();
+}
+
+/*! @} */
+
+AST_NAMESPACE_END

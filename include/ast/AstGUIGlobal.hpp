@@ -1,0 +1,1 @@
+﻿#include "AstUiCore/AstGUIGlobal.hpp"

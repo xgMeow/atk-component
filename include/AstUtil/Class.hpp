@@ -1,0 +1,144 @@
+﻿/// @file      Class.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2025-12-09
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/Struct.hpp"
+#include "AstUtil/SharedPtr.hpp"
+#include "AstUtil/Object.hpp"
+#include <type_traits>
+
+AST_NAMESPACE_BEGIN
+
+class Object;
+
+
+
+/// @brief 类元信息
+/// @details 类元信息，包含类的名称、属性、方法等
+/// @todo 实现类的反射机制
+/// @ingroup RTTI
+class AST_UTIL_API Class: public Struct
+{
+public:
+    typedef Object* (*FConstructor)(Object* parentScope);
+    typedef Object* (*FResolve)(StringView value);
+
+    AST_OBJECT(Class);
+
+    using Struct::Struct;
+
+    Class(const Class&) = default;
+    Class& operator=(const Class&) = default;
+
+    /// @brief 构造函数
+    /// @param parent 父类指针
+    explicit Class(Class* parent = nullptr);
+
+
+    ~Class();
+
+    /// @brief 类型转换
+    /// @param obj 输入对象指针
+    /// @return Object* 转换后的对象指针
+    Object* cast(Object* obj) const;
+    const Object* cast(const Object* obj) const;
+
+    /// @brief 检查类是否为虚类
+    /// @return 是否为虚类
+    bool isVirtual() const{return constructor_ == nullptr;}
+
+    /// @brief 获取父类
+    /// @return Class* 父类指针
+    Class* getParent() const{ return parent_; }
+
+    /// @brief 注册类到类注册器
+    void addToRegistry() const;
+
+    /// @brief 创建新对象
+    /// @return Object* 新对象指针
+    Object* newObject(Object* parentScope) const;
+
+    /// @brief 解析字符串
+    /// @param value 字符串值
+    /// @return Object* 解析结果
+    Object* resolve(StringView value) const;
+
+    /// @brief 获取默认对象
+    /// @return Object* 默认对象指针
+    Object* getDefaultObject() const;
+public:
+
+    /// @brief 设置父类
+    /// @warning 内部使用，不建议外部调用，否则可能导致未定义行为
+    /// @param parent 父类指针
+    void setParent(Class* parent){ parent_ = parent; }
+
+    /// @brief 设置构造函数
+    /// @warning 内部使用，不建议外部调用，否则可能导致未定义行为
+    /// @param constructor 构造函数指针
+    void setConstructor(FConstructor constructor){ constructor_ = constructor; }
+
+    /// @brief 设置解析函数
+    /// @param resolve 解析函数指针
+    void setResolve(FResolve resolve){ resolve_ = resolve; }
+
+    /// @brief 设置父类
+    /// @warning 内部使用，不建议外部调用，否则可能导致未定义行为
+    /// @param T 父类类型
+    template<typename T>
+    void setParent()
+    {
+        //setParent(T::StaticType());
+        setParent(&T::staticType);
+    }
+
+    /// @brief 设置构造函数
+    /// @warning 内部使用，不建议外部调用，否则可能导致未定义行为
+    /// @param T 构造函数类型
+    template<typename T>
+    typename std::enable_if<!std::is_abstract<T>::value>::type setConstructor() {
+        setConstructor([](Object* parentScope) -> Object* {
+            auto obj = new T();
+            // Struct 及其派生类（例如 Class 元类自身）构造时会持有一个"初始强引用"
+            // （见 Struct::Struct 中的 Object(initial_strong_ref)），用于保证静态存储期/
+            // 栈上的元类对象不会被引用计数释放。这里创建的是堆对象，所有权交给调用者
+            // （通常为 SharedPtr），因此需要先释放这次初始强引用，
+            // 否则调用者释放后引用计数仍为 1，对象永远不会被释放。
+            if (std::is_base_of<Struct, T>::value)
+                obj->decRefNoDelete();
+            obj->setParentScope(parentScope);
+            return obj;
+        });
+    }
+
+    template<typename T>
+    typename std::enable_if<std::is_abstract<T>::value>::type setConstructor() {
+        setConstructor(nullptr);
+    }
+
+    template<typename T>
+    void setResolve()
+    {
+        typedef T* (*FResolveClsSpec)(StringView value);
+        static_assert(std::is_same<decltype(&T::Resolve), FResolveClsSpec>::value, "T must have Resolve method with signature T* (StringView value)");
+        setResolve(reinterpret_cast<FResolve>(&T::Resolve));
+    }
+public:
+    /// @brief 获取所有属性（含继承链）
+    /// @param out 输出属性指针向量
+    /// @param overwriteSameName 是否覆盖父类的同名属性
+    void getAllProperties(std::vector<Property*>& out, bool overwriteSameName = false) const;
+protected:
+    Class* parent_{nullptr};                       ///< 父类
+    FConstructor constructor_{nullptr};            ///< 构造函数
+    FResolve resolve_{nullptr};                    ///< 解析函数
+    SharedPtr<Object> defaultObject_{nullptr};     ///< 默认对象
+};
+
+
+AST_NAMESPACE_END

@@ -1,0 +1,252 @@
+﻿/// @file      Axes.hpp
+/// @brief     
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-03-04
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstCore/Object.hpp"
+#include "AstUtil/ObjectNamed.hpp"
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup Geometry
+    @{
+*/
+
+class Rotation;
+class KinematicRotation;
+class AccelerationRotation;
+class Axes;
+using PAxes = Axes*;
+using HAxes = SharedPtr<Axes>;
+
+/// @brief 计算轴系之间的旋转变换。
+/// @param source 源轴系
+/// @param target 目标轴系
+/// @param tp 时间点
+/// @param rotation 输出的旋转变换
+/// @return 错误码
+AST_CORE_API errc_t aAxesTransform(Axes& source, Axes& target, const TimePoint& tp, Rotation& rotation);
+AST_CORE_API errc_t aAxesTransform(Axes* source, Axes* target, const TimePoint& tp, Rotation& rotation);
+
+
+/// @brief 计算轴系之间的转换矩阵。
+/// @param source 源轴系
+/// @param target 目标轴系
+/// @param tp 时间点
+/// @param matrix 输出的转换矩阵
+/// @return 错误码
+AST_CORE_API errc_t aAxesTransform(Axes& source, Axes& target, const TimePoint& tp, Matrix3d& matrix);
+AST_CORE_API errc_t aAxesTransform(Axes* source, Axes* target, const TimePoint& tp, Matrix3d& matrix);
+
+
+/// @brief 计算轴系之间的运动学旋转变换
+/// @param source 源轴系
+/// @param target 目标轴系
+/// @param tp 时间点
+/// @param rotation 输出的运动学旋转变换
+/// @return 错误码
+AST_CORE_API errc_t aAxesTransform(Axes& source, Axes& target, const TimePoint& tp, KinematicRotation& rotation);
+AST_CORE_API errc_t aAxesTransform(Axes* source, Axes* target, const TimePoint& tp, KinematicRotation& rotation);
+
+
+/// @brief 计算轴系之间的加速度旋转变换
+/// @param source 源轴系
+/// @param target 目标轴系
+/// @param tp 时间点
+/// @param rotation 输出的加速度旋转变换
+/// @return 错误码
+AST_CORE_API errc_t aAxesTransform(Axes& source, Axes& target, const TimePoint& tp, AccelerationRotation& rotation);
+AST_CORE_API errc_t aAxesTransform(Axes* source, Axes* target, const TimePoint& tp, AccelerationRotation& rotation);
+
+
+/// @brief 轴系抽象基类
+/// @details 轴系是一种几何元素，表示三维空间中的一组正交坐标轴方向。
+///          所有具体轴系类型（地固系、惯性系、冻结系等）均派生自此类。
+///          轴系通过父子关系构成树形层级，根轴系通常为惯性空间（如 ICRF）。
+class AST_CORE_API Axes : public ObjectNamed
+{
+public:
+    AST_OBJECT(Axes)
+    ~Axes() override = default;
+    Axes() = default;
+
+    A_DISABLE_COPY(Axes)
+
+    /// @brief 获取当前轴系的父轴系
+    /// @return 父轴系指针，根轴系返回 nullptr
+    virtual Axes* getParent() const = 0;
+
+    /// @brief 获取当前轴系相对于父轴系的旋转变换
+    /// @param tp 时间点
+    /// @param rotation 输出参数，旋转变换
+    /// @return 错误码
+    virtual errc_t getTransform(const TimePoint& tp, Rotation& rotation) const = 0;
+
+    /// @brief 获取当前轴系相对于父轴系的运动学旋转变换
+    /// @param tp 时间点
+    /// @param rotation 输出参数，运动学旋转变换（包含角速度）
+    /// @return 错误码
+    virtual errc_t getTransform(const TimePoint& tp, KinematicRotation& rotation) const = 0;
+
+    /// @brief 获取当前轴系相对于父轴系的加速度旋转变换
+    /// @param tp 时间点
+    /// @param rotation 输出参数，加速度旋转变换（包含加速度）
+    /// @return 错误码
+    virtual errc_t getTransform(const TimePoint& tp, AccelerationRotation& rotation) const;
+public:
+    /// @brief 获取当前轴系的深度
+    /// @details 根轴系深度为 0，每增加一级父轴系深度加 1。
+    /// @return 深度值
+    int getDepth() const;
+
+    /// @brief 获取当前轴系指定深度的祖先轴系
+    /// @param depth 目标祖先的深度
+    /// @return 祖先轴系指针，若 depth 超出范围则返回 nullptr
+    Axes* getAncestor(int depth) const;
+
+public:
+    /// @brief 获取当前轴系到目标轴系的旋转变换
+    /// @param target 目标轴系
+    /// @param tp 时间点
+    /// @param rotation 输出参数，旋转变换
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformTo(Axes* target, const TimePoint& tp, Rotation& rotation) const
+    {
+        return aAxesTransform(const_cast<Axes*>(this), target, tp, rotation);
+    }
+    A_ALWAYS_INLINE
+    errc_t getTransformTo(Axes& target, const TimePoint& tp, Rotation& rotation) const
+    {
+        return aAxesTransform(const_cast<Axes&>(*this), target, tp, rotation);
+    }
+    /// @brief 获取当前轴系到目标轴系的运动学旋转变换
+    /// @param target 目标轴系
+    /// @param tp 时间点
+    /// @param rotation 输出参数，运动学旋转变换（包含角速度）
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformTo(Axes* target, const TimePoint& tp, KinematicRotation& rotation) const
+    {
+        return aAxesTransform(const_cast<Axes*>(this), target, tp, rotation);
+    }
+    A_ALWAYS_INLINE
+    errc_t getTransformTo(Axes& target, const TimePoint& tp, KinematicRotation& rotation) const
+    {
+        return aAxesTransform(const_cast<Axes&>(*this), target, tp, rotation);
+    }
+    /// @brief 获取源轴系到当前轴系的旋转变换
+    /// @param source 源轴系
+    /// @param tp 时间点
+    /// @param rotation 输出参数，旋转变换
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformFrom(Axes* source, const TimePoint& tp, Rotation& rotation) const
+    {
+        return aAxesTransform(source, const_cast<Axes*>(this), tp, rotation);
+    }
+    A_ALWAYS_INLINE
+    errc_t getTransformFrom(Axes& source, const TimePoint& tp, Rotation& rotation) const
+    {
+        return aAxesTransform(source, const_cast<Axes&>(*this), tp, rotation);
+    }
+    /// @brief 获取源轴系到当前轴系的运动学旋转变换
+    /// @param source 源轴系
+    /// @param tp 时间点
+    /// @param rotation 输出参数，运动学旋转变换（包含角速度）
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformFrom(Axes* source, const TimePoint& tp, KinematicRotation& rotation) const
+    {
+        return aAxesTransform(source, const_cast<Axes*>(this), tp, rotation);
+    }
+    A_ALWAYS_INLINE
+    errc_t getTransformFrom(Axes& source, const TimePoint& tp, KinematicRotation& rotation) const
+    {
+        return aAxesTransform(source, const_cast<Axes&>(*this), tp, rotation);
+    }
+    /// @brief 获取源轴系到当前轴系的加速度旋转变换
+    /// @param source 源轴系
+    /// @param tp 时间点
+    /// @param rotation 输出参数，加速度旋转变换（包含角加速度）
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformFrom(Axes* source, const TimePoint& tp, AccelerationRotation& rotation) const
+    {
+        return aAxesTransform(source, const_cast<Axes*>(this), tp, rotation);
+    }
+    A_ALWAYS_INLINE
+    errc_t getTransformFrom(Axes& source, const TimePoint& tp, AccelerationRotation& rotation) const
+    {
+        return aAxesTransform(source, const_cast<Axes&>(*this), tp, rotation);
+    }
+    /// @brief 获取当前轴系相对于父轴系的旋转变换
+    /// @param tp 时间点
+    /// @param rotation 输出参数，旋转变换
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformFromParent(const TimePoint& tp, Rotation& rotation) const
+    {
+        return getTransform(tp, rotation);
+    }
+    /// @brief 获取当前轴系相对于父轴系的运动学旋转变换
+    /// @param tp 时间点
+    /// @param rotation 输出参数，运动学旋转变换（包含角速度）
+    /// @return 错误码
+    A_ALWAYS_INLINE
+    errc_t getTransformFromParent(const TimePoint& tp, KinematicRotation& rotation) const
+    {
+        return getTransform(tp, rotation);
+    }
+public:
+    /// @brief 获取当前轴系相对于目标轴系的姿态（四元数表示）
+    /// @param axes 目标轴系
+    /// @param tp 时间点
+    /// @param quat 四元数
+    /// @return 错误码
+    errc_t getAttitudeIn(Axes& axes, const TimePoint& tp, Quaternion& quat) const;
+    A_ALWAYS_INLINE
+    errc_t getAttitudeIn(Axes* axes, const TimePoint& tp, Quaternion& quat) const
+    {
+        if(axes == nullptr) return eErrorNullInput;
+        return getAttitudeIn(*axes, tp, quat);
+    }
+
+    /// @brief 获取当前轴系相对于目标轴系的姿态（四元数表示）和角速度
+    /// @param axes 目标轴系
+    /// @param tp 时间点
+    /// @param quat 四元数
+    /// @param angvel 角速度
+    /// @return 错误码
+    errc_t getAttitudeIn(Axes& axes, const TimePoint& tp, Quaternion& quat, Vector3d& angvel) const;
+    A_ALWAYS_INLINE
+    errc_t getAttitudeIn(Axes* axes, const TimePoint& tp, Quaternion& quat, Vector3d& angvel) const
+    {
+        if(axes == nullptr) return eErrorNullInput;
+        return getAttitudeIn(*axes, tp, quat, angvel);
+    }
+};
+
+
+/// @brief 用有限差分计算轴系相对于参考轴系的角速度
+/// @note 增量旋转的轴角给的是主值(短弧)，因此要求 |ω|·2h < π；
+/// @note 一侧求值失败时退化为单侧差分，两侧都失败时原样返回错误码
+/// @param[in] axes 轴系
+/// @param[in] referenceAxes 参考轴系
+/// @param[in] tp 时间点
+/// @param[out] angvel axes 相对 referenceAxes 的角速度(在 referenceAxes 下分解)
+/// @param[in] h 差分步长(秒)
+/// @return 错误码
+AST_CORE_API errc_t aAxesRotationRateByDifference(Axes& axes, Axes& referenceAxes, const TimePoint& tp, Vector3d& angvel, double h = 0.05);
+
+using PAxes = Axes*;                ///< 轴系指针(pointer to axes)
+using HAxes = SharedPtr<Axes>;      ///< 轴系句柄(handle to axes)
+
+/*! @} */
+
+AST_NAMESPACE_END

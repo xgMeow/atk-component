@@ -1,0 +1,159 @@
+﻿/// @file      BaseParser.hpp
+/// @brief     
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-03-07
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/StringView.hpp"
+#include <cstdio>
+#include <fstream>
+#include <vector>
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup ParseFormat
+    @{
+*/
+
+
+/// @brief     从文件中读取一行文本，跳过行首的空白字符，移除行尾的换行符。
+/// @param     buffer  用于存储读取文本的缓冲区。
+/// @param     size    缓冲区的大小。
+/// @param     file    文件指针，指向要读取的文件。
+/// @return    如果成功读取到一行文本，返回指向缓冲区的指针；否则返回 nullptr。
+AST_UTIL_CAPI char* fgetlinetrim(char* buffer, int size, FILE* file);
+
+
+
+/// @brief 判断是否为#注释行
+/// @details 检查给定的文本行是否以井号 '#' 开头，且行首没有空白字符。
+/// @param line 文本行视图，指定要检查的文本行。
+/// @return 如果是注释行则返回 true，否则返回 false。
+AST_UTIL_CAPI bool aIsHashCommentLine(StringView line);
+
+
+
+/// @brief 解析器基类
+class AST_UTIL_API BaseParser
+{
+public:
+    BaseParser();
+
+    BaseParser(const BaseParser&) = delete;
+    BaseParser& operator=(const BaseParser&) = delete;
+
+    explicit BaseParser(StringView filepath);
+    ~BaseParser();
+
+
+public: // 基础操作
+    /// @brief 打开文件
+    /// @details 打开指定路径的文件，用于后续的解析操作。
+    /// @param filepath 文件路径视图，指定要打开的文件路径。
+    void open(StringView filepath);
+
+    /// @brief 是否打开文件
+    /// @details 判断当前是否有文件打开。
+    /// @return 如果有文件打开则返回 true，否则返回 false。
+    bool isOpen() const { return file_ != nullptr; }
+
+    /// @brief 关闭文件
+    /// @details 关闭当前打开的文件。
+    void close();
+
+    /// @brief 移动文件指针
+    /// @details 移动当前打开文件的指针到指定位置。
+    /// @param pos 偏移量，指定要移动的字节数。
+    /// @param dir 方向，指定移动的方向（如 std::ios::beg, std::ios::cur, std::ios::end）。
+    void seek(std::streamoff pos, std::ios::seekdir dir);
+
+    /// @brief 获取当前文件指针位置
+    /// @details 获取当前打开文件的指针位置。
+    /// @return 当前文件指针位置
+    std::streamoff tell();
+
+    /// @brief 是否到达文件末尾
+    /// @details 判断当前文件指针是否到达文件末尾。
+    /// @return 如果到达文件末尾则返回 true，否则返回 false。
+    bool eof() const { return feof(file_) != 0; }
+
+    /// @brief 读取文件内容
+    /// @details 从当前文件指针位置读取指定数量的字节到缓冲区。
+    /// @param buffer 用于存储读取内容的缓冲区。
+    /// @param size 要读取的字节数。
+    /// @param pos 读取的起始位置，从文件开头开始计算。
+    /// @return 实际读取的字节数。
+    size_t read(void* buffer, size_t size, size_t pos) const;
+
+    /// @brief 读取文件内容
+    /// @details 从当前文件指针位置读取指定数量的字节到缓冲区。
+    /// @param buffer 用于存储读取内容的缓冲区。
+    /// @param size 要读取的字节数。
+    /// @return 实际读取的字节数。
+    size_t read(void* buffer, size_t size) const;
+
+public:
+    /// @brief 获取当前行（包含行结束符）
+    /// @details 获取当前行的内容，包含行结束符。
+    /// @return 当前行的内容（包含行结束符）
+    StringView getLineWithNewline();
+
+    /// @brief 获取当前行
+    /// @details 获取当前行的内容，不包含行结束符。
+    /// @return 当前行的内容
+    StringView getLine();
+
+    /// @brief 获取当前行（去除首尾空格）
+    /// @details 获取当前行的内容，不包含行结束符。
+    /// @return 当前行的内容（去除首尾空格）
+    StringView getLineTrim();
+
+    /// @brief 获取当前非#注释行（跳过#注释行）
+    /// @details 获取当前行的内容，不包含行结束符，跳过以井号 '#' 开头的行。
+    /// @return 当前行的内容（跳过#注释行）
+    StringView getLineSkipHashComment();
+
+public: // 辅助信息
+    /// @brief 获取当前行号
+    /// @details 获取当前解析器所在的行号。
+    /// @return 当前行号
+    int getLineNumber();
+
+    /// @brief 获取当前文件路径
+    /// @details 获取当前打开文件的路径。
+    /// @return 当前文件路径
+    std::string getFilePath() const;
+
+    /// @brief 设置外部借用的文件指针，不转移文件指针的所有权。
+    /// @warning 外部借用的文件指针必须在解析器生命周期内有效，否则会导致未定义行为
+    ///          文件的打开模式必须与所使用解析器的打开模式一致，否则会导致未定义行为
+    /// @details 设置当前解析器使用的文件指针为外部借用的文件指针。
+    /// @param file 外部借用的文件指针
+    void setBorrowedFile(FILE* file);
+
+    /// @brief 设置文件指针，将文件指针的所有权转移给解析器。
+    /// @warning 调用该方法后，解析器将接管文件指针的所有权，外部不应再操作该文件指针
+    ///          文件的打开模式必须与所使用解析器的打开模式一致，否则会导致未定义行为
+    /// @details 设置当前解析器使用的文件指针，并将文件指针的所有权转移给解析器。
+    /// @param file 文件指针
+    void setOwnedFile(FILE* file);
+
+    /// @brief 获取当前解析器使用的文件指针
+    FILE* getFile() const { return file_; }
+
+protected:
+    std::vector<char>& getLineBuffer() { return lineBuffer_; }
+private:
+    FILE*             file_{nullptr};           ///< 文件指针
+    bool              fileBorrowed_{false};     ///< 是否从外部借用文件指针
+    std::vector<char> lineBuffer_{};              ///< 行缓冲区
+};
+
+
+/*! @} */
+
+AST_NAMESPACE_END

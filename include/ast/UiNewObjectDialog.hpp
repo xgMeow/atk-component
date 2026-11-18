@@ -1,0 +1,1 @@
+﻿#include "AstUiCore/UiNewObjectDialog.hpp"

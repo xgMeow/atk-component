@@ -1,0 +1,215 @@
+﻿/// @file      IO.hpp
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      30.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/StringView.hpp"
+#include <cwchar>       // for wchar_t, wprintf, ...
+#include <cstdio>       // for std::fopen, std::printf, ...
+#include <cstdarg>      // for va_list, va_start, va_end
+#include <string>       // for std::string
+
+// 只有当启用命名空间且定义了AST_ENABLE_OVERRIDE_STDLIB时，才覆盖标准库的函数
+// 避免在极端情况下的名称冲突，例如using namespace std; using namespace ast; 虽然这不是推荐的做法
+
+#if defined AST_BUILD_LIB && defined AST_ENABLE_NAMESPACE
+#   ifndef AST_ENABLE_OVERRIDE_STDLIB  
+#       define AST_ENABLE_OVERRIDE_STDLIB
+#   endif // !AST_ENABLE_OVERRIDE_STDLIB
+#endif
+
+
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup Platform
+    @{
+*/
+
+
+namespace posix{
+
+using std::FILE;
+
+#ifdef _WIN32
+
+/// @brief 打开文件
+/// @param filepath 文件路径，utf-8编码
+/// @param mode 文件打开模式
+/// @return 文件指针
+AST_UTIL_API
+std::FILE* fopen(const char* filepath, const char* mode);
+
+
+/// @brief 重新打开文件
+/// @param filepath 文件路径，utf-8编码
+/// @param mode 文件打开模式
+/// @param stream 文件指针
+/// @return 文件指针
+AST_UTIL_API
+FILE* freopen(const char* filepath, const char* mode, FILE* stream);
+
+
+/// @brief 格式化输出
+/// @param format 格式化字符串，utf-8编码
+/// @param args 可变参数列表
+/// @return 输出字符数
+AST_UTIL_API
+int vprintf(const char* format, va_list args);
+
+/// @brief 格式化输出
+/// @param stream 文件指针
+/// @param format 格式化字符串，utf-8编码
+/// @param args 可变参数列表
+/// @return 输出字符数
+AST_UTIL_API
+int vfprintf(FILE* stream, const char* format, va_list args);
+
+/// @brief 格式化输出
+/// @param format 格式化字符串，utf-8编码
+/// @param ... 可变参数
+/// @return 输出字符数
+AST_UTIL_API
+int printf(const char* format, ...);
+
+/// @brief 格式化输出
+/// @param stream 文件指针
+/// @param format 格式化字符串，utf-8编码
+/// @param ... 可变参数
+/// @return 输出字符数
+AST_UTIL_API
+int fprintf(FILE* stream, const char* format, ...);
+
+
+/// @brief 格式化输出
+/// @param format 格式化字符串，utf-8编码
+/// @param ... 可变参数
+/// @return 输出字符数
+AST_UTIL_API
+int wprintf(const wchar_t* format, ...);
+
+/// @brief 格式化输出
+/// @param stream 文件指针
+/// @param format 格式化字符串，utf-8编码
+/// @param ... 可变参数
+/// @return 输出字符数
+AST_UTIL_API
+int fwprintf(FILE* stream, const wchar_t* format, ...);
+
+
+
+#else
+using std::fopen;
+using std::freopen;
+using std::vprintf;
+using std::vfprintf;
+using std::printf;
+using std::fprintf;
+using std::wprintf;
+using std::fwprintf;
+
+#endif
+}
+
+
+#ifdef AST_ENABLE_OVERRIDE_STDLIB       // 是否覆盖标准库的函数
+using namespace posix;
+#endif
+
+
+/// @brief 解析URI(统一资源标识符)并返回其对应的本地文件路径
+/// @details 支持三种输入：
+///        - 普通文件路径：原样返回，不检查文件是否存在，
+///          例如 "C:\\Users\\axel\\Desktop\\file.txt"；
+///        - `file://` 本地文件URI：支持 percent 解码（%20 等）与 localhost 主机名，
+///          例如 file:///path/to/file.txt ；
+///        - `http://`、`https://` 远程资源：下载并缓存在缓存文件夹（见 aCacheDir）中，
+///          同一URI只下载一次，多个进程间用文件锁协调。
+/// @param[in] uri 文件URI，utf-8编码
+/// @param[out] filepath 本地文件路径，utf-8编码；
+/// @return 错误码
+AST_UTIL_CAPI errc_t aUriFetch(StringView uri, std::string& filepath);
+
+
+/// @brief 打开URI(统一资源标识符)对应的文件
+/// 例如 https://example.com/file.txt 、file:///path/to/file.txt 等
+/// 也支持传入普通文件路径，即与 `fopen` 函数相同，
+/// 例如 "C:\\Users\\axel\\Desktop\\file.txt" 等
+/// @details 内部先调用 aUriFetch 得到本地路径，再以 `mode` 打开。
+///          远程资源会被下载并缓存，因此同一URI的第二次打开不会再联网。
+///          打开远程二进制资源时建议使用 "rb"。
+/// @param[in] uri 文件URI，utf-8编码
+/// @param[in] mode 文件打开模式，网络文件只支持 "r"、"rb"
+/// @return 文件指针，失败时返回空指针并设置 errno
+AST_UTIL_CAPI std::FILE* uriopen(const char* uri, const char* mode);
+
+
+A_ALWAYS_INLINE 
+std::FILE* ast_fopen(const char* filepath, const char* mode)
+{
+    return posix::fopen(filepath, mode);
+}
+
+
+A_ALWAYS_INLINE
+FILE* ast_freopen(const char* filepath, const char* mode, FILE* stream)
+{
+    return posix::freopen(filepath, mode, stream);
+}
+
+
+
+A_ALWAYS_INLINE 
+int ast_vprintf(const char* format, va_list args)
+{
+    return posix::vprintf(format, args);
+}
+
+
+AST_UTIL_CAPI int ast_printf(const char* format, ...);
+
+
+/// @brief 打印链接
+/// @param text 链接文本
+/// @param link 链接URL
+/// @return 输出字符数
+AST_UTIL_CAPI int aPrintLink(StringView text, StringView link);
+
+
+/// @brief 获取文件当前行号
+/// @param file 文件指针
+/// @return 当前行号，从1开始计数
+AST_UTIL_CAPI int aCurrentLineNumber(std::FILE* file);
+
+
+/// @brief 获取文件路径
+/// @param file 文件指针
+/// @param filepath 输出文件路径，utf-8编码
+/// @return 错误码
+AST_UTIL_CAPI errc_t aGetFilePath(std::FILE* file, std::string& filepath);
+
+
+/// @brief 获取文件路径
+/// @param file 文件指针
+/// @return 文件路径，utf-8编码
+A_ALWAYS_INLINE std::string aGetFilePath(std::FILE* file)
+{
+    std::string filepath;
+    errc_t rc = aGetFilePath(file, filepath);
+    A_UNUSED(rc);
+    return filepath;
+}
+
+
+
+/*! @} */
+
+
+
+AST_NAMESPACE_END
+

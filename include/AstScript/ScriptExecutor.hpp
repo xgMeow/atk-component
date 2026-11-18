@@ -1,0 +1,141 @@
+﻿/// @file      ScriptExecutor.hpp
+/// @brief     
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-04-29
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstScript/Value.hpp"
+#include <string>
+#include <type_traits>
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup 
+    @{
+*/
+
+
+/// @brief 脚本类型
+enum class EScriptLanguage
+{
+    ePython,            ///< Python 脚本
+    eMATLAB,            ///< MATLAB 脚本
+    eJavaScript,        ///< JavaScript 脚本
+    eJScript,           ///< JScript 脚本
+    eVBScript,          ///< VBScript 脚本
+    eJulia,             ///< Julia 脚本
+    eLua,               ///< Lua 脚本
+    eAstScript,         ///< AstScript 脚本
+};
+
+
+AST_SCRIPT_API std::string toString(EScriptLanguage type);
+
+class ScriptExecutor;
+class Variable;
+
+/// @brief 创建脚本执行器实例
+/// @param type 脚本类型
+/// @return 脚本执行器实例指针
+/// @note 脚本执行器实例的生命周期由调用方负责管理，调用方需要在使用完成后调用析构函数释放资源
+AST_SCRIPT_CAPI ScriptExecutor* aNewScriptExecutor(EScriptLanguage type);
+
+
+/// @brief 脚本执行结果
+/// @details 用于存储脚本执行结果，包括错误信息、变量值等
+class ScriptResult
+{
+public:
+    const std::string& error() const { return error_; }
+    Value* value() const { return value_.get(); }
+
+    std::string error_{};         ///< 错误信息
+    SharedPtr<Value> value_{};    ///< 返回值
+};
+
+/// @brief 脚本执行器，用于执行外部脚本
+/// @note 该类是一个抽象类，需要通过继承来实现具体的脚本执行器
+/// @details 用于执行外部脚本，如Python、MATLAB、JavaScript、JScript、VBScript、Julia、Lua 等
+/// 每个脚本执行器实例的生命周期由调用方负责管理，调用方需要在使用完成后调用析构函数释放资源
+/// 在脚本执行器实例的生命周期内，调用方可以调用execute函数执行执行脚本语句，或者调用evaluate函数对脚本表达式进行求值
+/// 并且可以调用setVariable函数设置脚本执行器的全局变量值，调用getVariable函数获取脚本执行器的全局变量值
+class AST_SCRIPT_API ScriptExecutor
+{
+public:
+    /// @brief 析构函数
+    /// @details 释放所有资源
+    virtual ~ScriptExecutor() = default;
+
+    /// @brief 初始化脚本执行器
+    /// @details 初始化脚本执行器，准备执行脚本
+    /// @return 初始化结果
+    virtual errc_t initialize() = 0;
+
+    /// @brief 结束脚本执行器
+    /// @details 结束脚本执行器，释放所有资源
+    virtual void finalize() = 0;
+
+    /// @brief 执行脚本语句
+    /// @param script 要执行的脚本语句
+    /// @param resultOut 执行结果指针，用于存储执行脚本语句的返回结果
+    /// @note 执行语句是否有返回值取决于脚本语言的设计，例如python执行语句没有返回值，而JavaScript、C、Ruby执行语句有返回值
+    /// @return 执行结果
+    virtual errc_t execute(StringView script, ScriptResult* resultOut=nullptr) = 0;
+
+    /// @brief 对脚本表达式进行求值
+    /// @param expression 脚本表达式
+    /// @param resultOut 执行结果指针，用于存储求值表达式时的结果
+    /// @return 求值结果
+    virtual errc_t evaluate(StringView expression, ScriptResult* resultOut=nullptr);
+
+
+    /// @brief 执行脚本(兼容旧版接口)
+    /// @param script 要执行的脚本内容
+    /// @param error 错误信息指针，用于存储执行脚本时的错误信息
+    /// @return 执行结果
+    errc_t execute(StringView script, std::string* error);
+
+
+    /// @brief 获取最近一次执行脚本时的错误信息
+    /// @warning 注意只能在execute函数执行失败后调用
+    /// 不要通过调用该函数来判断脚本是否执行成功
+    /// @return 最近一次执行脚本时的错误信息
+    virtual std::string getLastError() const = 0;
+
+    /// @brief 设置脚本执行器的变量
+    /// @param name 变量名称
+    /// @param value 变量值
+    /// @return 设置结果
+    virtual errc_t setVariable(StringView name, StringView value) = 0;
+    virtual errc_t setVariable(StringView name, double value) = 0;
+    virtual errc_t setVariable(StringView name, int value) = 0;
+    virtual errc_t setVariable(StringView name, bool value) = 0;
+    errc_t setVariable(StringView name, const char* value){return setVariable(name, StringView(value));}
+    errc_t setVariable(StringView name, const std::string& value){return setVariable(name, StringView(value));}
+    errc_t setVariable(Variable* var);
+
+    // 拦截 float、long、各种指针等无法匹配上述重载、却会被隐式转换悄悄接受下来的类型，让调用错误在编译期暴露出来
+    // 注意：不能连可转换为 StringView 的类型一起拦。除了 std::string，
+    //      SWIG 生成的包装代码会把参数写成 SwigValueWrapper<StringView>
+    template <typename T, typename = typename std::enable_if<!std::is_convertible<T, StringView>::value>::type>
+    errc_t setVariable(StringView name, T value) = delete;
+
+    /// @brief 获取脚本执行器的字符串变量值
+    /// @param name 变量名称
+    /// @param value 变量值
+    /// @return 获取结果
+    virtual errc_t getVariable(StringView name, std::string& value) const = 0;
+    virtual errc_t getVariable(StringView name, double& value) const = 0;
+    virtual errc_t getVariable(StringView name, int& value) const = 0;
+    virtual errc_t getVariable(StringView name, bool& value) const = 0;
+    errc_t getVariable(Variable* var);
+};
+
+
+/*! @} */
+
+AST_NAMESPACE_END

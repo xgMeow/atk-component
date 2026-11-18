@@ -1,0 +1,241 @@
+﻿/// @file      JplDe.hpp
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      5.12.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstCore/RunTime.hpp"
+#include "AstUtil/OrderedMap.hpp"   // for OrderedMap
+#include <stdint.h>                 // for uint32_t
+#include <cstdio>                   // for FILE
+#include <string>                   // for std::string
+#include <mutex>                    // for std::mutex
+
+AST_NAMESPACE_BEGIN
+
+
+/*!
+    @addtogroup Data
+    @{
+*/
+
+
+
+/// @brief  JPL DE文件接口类
+class AST_CORE_API JplDe
+{
+public:
+    // 与GMAT的DeFile类中的天体编号一致
+    enum EDataCode
+    {
+        eNotAvailable = -1,     ///< 不可用
+        eMercury = 0,           ///< 水星   
+        eVenus = 1,             ///< 金星     
+        eEarth = 2,             ///< 地球     
+        eMars = 3,              ///< 火星      
+        eJupiter = 4,           ///< 木星   
+        eSaturn = 5,            ///< 土星    
+        eUranus = 6,            ///< 天王星    
+        eNeptune = 7,           ///< 海王星   
+        ePluto = 8,             ///< 冥王星     
+        eMoon = 9,              ///< 月球
+        eSun = 10,              ///< 太阳
+        eSSBarycenter = 11,     ///< 太阳系质心
+        eEMBarycenter = 12,     ///< 地月系质心
+    };
+
+    using ConstantList = std::vector<std::pair<std::string, double>>;
+    using ConstantMap = OrderedMap<std::string, double>;
+
+    JplDe();
+    ~JplDe();
+
+    JplDe(const JplDe&) = delete;
+    JplDe& operator=(const JplDe&) = delete;
+
+    /// @brief  打开JPL DE文件
+    /// @param  filepath - JPL DE文件路径
+    /// @retval          - 错误码
+    errc_t open(const char* filepath);
+
+
+    errc_t openDefault();
+
+    /// @brief  检查JPL DE文件是否已打开
+    /// @retval             - 是否已打开
+    bool isOpen() const;
+
+
+    /// @brief  关闭JPL DE文件
+    void close();
+
+
+    /// @brief  获取对应时间点的目标天体在参考天体下的位置和速度
+    /// @details 位置向量和速度向量的参考系是参考天体为中心的ICRF系
+    /// @param  time        - 时间点
+    /// @param  target      - 目标天体
+    /// @param  referenceBody- 参考天体
+    /// @param  pos         - 位置向量[m]
+    /// @param  vel         - 速度向量[m/s]
+    /// @retval             - 错误码
+    errc_t getPosVelICRF(
+        const TimePoint& time,
+        EDataCode target,
+        EDataCode referenceBody,
+        Vector3d& pos,
+        Vector3d& vel
+    );
+
+    errc_t getPosVelICRF(
+        const TimePoint& time,
+        EDataCode target,
+        EDataCode referenceBody,
+        Vector3d& pos,
+        Vector3d* vel
+    );
+
+
+    /// @brief  获取对应时间点的目标天体在参考天体下的位置
+    /// @details 位置向量的参考系是参考天体为中心的ICRF系
+    /// @param  time        - 时间点
+    /// @param  target      - 目标天体
+    /// @param  referenceBody- 参考天体
+    /// @param  pos         - 位置向量[m]
+    /// @retval             - 错误码
+    errc_t getPosICRF(
+        const TimePoint& time,
+        EDataCode target,
+        EDataCode referenceBody,
+        Vector3d& pos
+    );
+
+
+    /// @brief  获取对应时间点的章动角
+    /// @param  time        - 时间点
+    /// @param  nutLong     - 黄经章动[rad]
+    /// @param  nutObl      - 倾角章动[rad]
+    /// @retval             - 错误码
+    errc_t	getNutation(
+        const TimePoint& time,
+        double& nutLong,
+        double& nutObl
+    );
+
+
+    /// @brief  获取对应时间点的月球天平动相关角度
+    /// @param  time        - 时间点
+    /// @param  ang         - 从ICRF到月球惯性主轴坐标系的转角(rad)
+    ///                     - [omega,i,u],[进动角,章动角,自转角],按照313顺序旋转
+    /// @param  angRate     - 转动角速率[rad/s]
+    /// @retval             - 错误码
+    errc_t		getLibration(
+        const TimePoint& time,
+        Euler& ang,
+        Euler& angRate
+    );
+
+
+    /// @brief  获取对应时间点的月球天平动相关角度（Euler）
+    /// @param  time        - 时间点
+    /// @param  ang         - 从ICRF到月球惯性主轴坐标系的转角(rad)
+    ///                     - [omega,i,u],[进动角,章动角,自转角],按照313顺序旋转
+    /// @retval             - 错误码
+    errc_t       getLibration(
+        const TimePoint& time,
+        Euler& ang
+    );
+
+    /// @brief  获取JPL DE文件的星历版本
+    /// @retval             - 星历版本
+    uint32_t getEphemVersion() const{ return ephemVersion_; }
+
+
+    /// @brief  获取JPL DE文件中的常量个数
+    /// @retval             - 常量个数
+    uint32_t getNumConstants() const { return numConstants_; }
+
+
+    const ConstantList& getConstants() const;
+
+    /// @brief  获取JPL DE文件中指定索引的常量（名称与数值）
+    /// @details 常量名取自文件头 constant_names 表（6字符），数值取自常量记录区
+    /// @param  index   - 常量索引 [0, numConstants_)
+    /// @param  value   - 输出：常量值
+    /// @param  name    - 输出：常量名称（可为 nullptr）
+    /// @retval             - 错误码
+    errc_t getConstant(size_t index, double& value, std::string* name = nullptr) const;
+
+
+    /// @brief  获取JPL DE文件中指定名称的常量数值
+    /// @details 按名返回常量值（名称去掉尾部空格后再比较，O(1) 哈希查找；首次调用时懒加载）
+    /// @param  name    - 常量名称（如 "GM1"、"AU"、"EMRAT" 等）
+    /// @param  value   - 输出：常量值
+    /// @retval             - 错误码；未找到返回 JPL_EPH_QUANTITY_NOT_IN_EPHEMERIS
+    errc_t getConstant(const std::string& name, double& value) const;
+
+    /// @brief  获取JPL DE文件中指定名称的常量数值
+    /// @details 按名返回常量值（名称去掉尾部空格后再比较，O(1) 哈希查找；首次调用时懒加载）
+    /// @param  name    - 常量名称（如 "GM1"、"AU"、"EMRAT" 等）
+    /// @retval             - 常量值；未找到返回 NaN
+    double getConstant(const std::string& name) const;
+
+    /// @brief  获取JPL DE文件中的天文单位长度
+    /// @retval             - 天文单位长度(米)
+    double getAU() const{ return au_ * 1000; }
+
+    /// @brief  获取JPL DE文件中的地球月球质量比
+    /// @retval             - 地球月球质量比
+    double getEarthMoonMassRatio() const{ return emMassRatio_; }
+
+    /// @brief  获取JPL DE文件中指定天体的GM值
+    /// @details 文件内 GM 以 AU³/day² 存储，本函数换算为 SI 单位 m³/s² 返回
+    ///          （与 getAU() 返回米、getPosVelICRF() 返回米/米每秒 保持一致）。
+    ///          地球/月球无独立 GM，由地月质心 GM(GMB) 与地球月球质量比拆分。
+    /// @param  bodyCode    - 天体代码（eEarth / eMoon 会自动拆分地月质心）
+    /// @retval             - 天体GM值[m³/s²]；未找到返回 NaN
+    double getBodyGM(EDataCode bodyCode) const;
+    errc_t getBodyGM(EDataCode bodyCode, double& value) const;
+
+    /// @brief  获取JPL DE星历数据的时间间隔
+    /// @param  interval   - 时间间隔
+    /// @retval             - 错误码
+    errc_t getInterval(TimeInterval& interval) const;
+
+private:
+    /// @brief  懒加载：首次被 getConstant() 调用时，把全部常量（名称+数值）从文件读入 constants_
+    /// @retval             - 错误码
+    errc_t         loadConstants() const;
+
+    errc_t         readDataBlock(size_t idx);
+    errc_t         getStateTDB(const JulianDate& jdTDB, int dataid, double pos[], double vel[]);
+    errc_t         getStateTDB(const JulianDate& jdTDB, int datalist[11], double statelist[11][6]);
+
+    errc_t         getState(const TimePoint& time, int dataid, double pos[], double vel[]);
+    errc_t         getState(const TimePoint& time, int datalist[11], double statelist[11][6]);
+protected:
+
+    bool        isSameEndian_;        ///< 二进制文件与系统大小端是否一致
+    uint32_t    ephemVersion_{ 0 };   ///< De星历版本
+    uint32_t    numConstants_{};      ///< 文件的常量个数
+    uint32_t    numDataBlock_{0};     ///< 星历总的数据块个数      
+    uint32_t    numCoeff_{};          ///< 星历每个数据块的系数数量
+    uint32_t    ipt_[15][3]{};        ///< 数据指针[数据起始位置；每个坐标分量的数据量；子块个数：如4代表了32天要分为四块，每个子块包含了8天的数据]
+    double      ephemStart_{0};       ///< 星历起始时间(JED)
+    double      ephemEnd_{0};         ///< 星历结束时间(JED)
+    double      ephemStep_{0};        ///< 星历每个数据块的天数
+    double      au_{};                ///< 天文单位长度(千米) 约为 1.495978707e8
+    double      emMassRatio_{};       ///< 地球月球质量比
+    FILE*       deFile_{ NULL };      ///< De二进制文件
+    double**    dataBlocks_{NULL};    ///< 星历数据块的内存缓存
+    mutable ConstantMap constants_{}; ///< DE 常量表（懒加载；保持 DE 索引顺序，键为常量名）
+    mutable std::mutex  mutex_{};     ///< 互斥锁
+};
+
+
+
+/*! @} */
+
+AST_NAMESPACE_END

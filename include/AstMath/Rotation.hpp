@@ -1,0 +1,330 @@
+﻿/// @file      Rotation.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2025-12-08
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstMath/Quaternion.hpp"
+#include "AstMath/Matrix.hpp"
+#include "AstMath/Vector.hpp"
+#include "AstMath/AngleAxis.hpp"
+#include "AstMath/AttitudeConvert.hpp"
+
+
+AST_NAMESPACE_BEGIN
+
+
+#define _AST_DEF_ROTATION_PROPERTIES\
+    const Rotation& rotation() const { return rotation_; }\
+    Rotation& rotation() { return rotation_; }\
+    const Rotation& getRotation() const { return rotation_; }\
+    Rotation& getRotation() { return rotation_; }\
+    void setRotation(const Rotation& rotation) { rotation_ = rotation; }\
+    const Matrix3d& matrix() const { return rotation_.matrix(); }\
+    Matrix3d& matrix() { return rotation_.matrix(); }\
+    const Matrix3d& getMatrix() const { return rotation_.matrix(); }\
+    Matrix3d& getMatrix() { return rotation_.matrix(); }\
+    void setMatrix(const Matrix3d& mat) { rotation_.setMatrix(mat); }\
+    Quaternion quaternion() const { return rotation_.getQuaternion(); }\
+    Quaternion getQuaternion() const { return rotation_.getQuaternion(); }\
+
+
+
+/// @brief 坐标系旋转类
+/// @details 表示三维空间内的坐标系旋转
+/// 坐标系旋转类当前是基于坐标转换矩阵实现的，未来也可能会切换到四元数进行实现。
+/// 但是你不用关心其内部实现细节，只需要关注并使用其公开接口，注意不要依赖其内部实现。
+class Rotation
+{
+public:
+    /// @brief 单位旋转
+    /// @details 单位旋转是指不进行任何旋转的旋转
+    /// @return 单位旋转
+    static Rotation Identity();
+
+    /// @brief 从矩阵转换为坐标系旋转对象
+    static Rotation& CastFrom(Matrix3d& mat)
+    {
+        return *reinterpret_cast<Rotation*>(&mat);
+    }
+
+    /// @brief 从矩阵转换为坐标系旋转对象（常量版本）
+    static const Rotation& CastFrom(const Matrix3d& mat)
+    {
+        return *reinterpret_cast<const Rotation*>(&mat);
+    }
+
+    /// @brief 从矩阵转换为坐标系旋转对象
+    static Rotation FromMatrix(const Matrix3d& mat)
+    {
+        return Rotation(mat);
+    }
+
+    /// @brief 坐标系旋转类默认构造函数
+    Rotation() = default;
+
+    /// @brief 复制构造函数
+    /// @param other 坐标系旋转对象
+    Rotation(const Rotation& other) = default;
+
+    /// @brief 构造函数
+    /// @param quat 四元数
+    explicit Rotation(const Quaternion& quat);
+
+    /// @brief 从旋转矩阵构造坐标系旋转对象
+    /// @param mat 旋转矩阵
+    explicit Rotation(const Matrix3d& mat);
+
+    /// @brief 从轴角构造坐标系旋转对象
+    /// @param axis 旋转轴
+    /// @param angle 旋转角度（弧度）
+    Rotation(double angle, const Vector3d& axis);
+
+
+    /// @brief 从轴角构造坐标系旋转对象
+    /// @param aa 轴角
+    explicit Rotation(const AngleAxis& aa);
+
+    /// @brief 获取旋转矩阵
+    /// @return 旋转矩阵
+    const Matrix3d& getMatrix() const { return matrix_; }
+    Matrix3d& getMatrix() { return matrix_; }
+    const Matrix3d& matrix() const { return matrix_; }
+    Matrix3d& matrix() { return matrix_; }
+
+    /// @brief 设置旋转矩阵
+    /// @param mat 旋转矩阵
+    void setMatrix(const Matrix3d& mat) { matrix_ = mat; }
+
+    /// @brief 获取四元数
+    /// @return 四元数
+    Quaternion getQuaternion() const;
+
+    /// @brief 设置四元数
+    /// @param quat 四元数
+    void setQuaternion(const Quaternion& quat);
+
+    /// @brief 获取旋转轴
+    /// @return 旋转轴
+    Vector3d getAxis() const;
+
+    /// @brief 获取旋转角度（弧度）
+    /// @return 旋转角度（弧度）
+    double getAngle() const;
+
+
+    /// @brief 获取旋转轴和角度（弧度）
+    /// @param axis 旋转轴
+    /// @param angle 旋转角度（弧度）
+    void getAngleAxis(double& angle, Vector3d& axis) const;
+
+
+    /// @brief 设置轴角
+    /// @param angle 旋转角度（弧度）
+    /// @param axis 旋转轴
+    void setAngleAxis(double angle, const Vector3d& axis);
+
+    /// @brief 获取轴角
+    /// @param aa 轴角
+    void getAngleAxis(AngleAxis& aa) const;
+
+    /// @brief 设置轴角
+    /// @param aa 轴角
+    void setAngleAxis(const AngleAxis& aa);
+
+    /// @brief 组合下一个旋转
+    /// @warning 
+    /// 组合旋转是先应用当前旋转，再应用下一个旋转
+    /// 这个函数会修改当前旋转对象。
+    /// @param next 下一个旋转
+    Rotation& compose(const Rotation& next);
+
+    /// @brief 组合下一个旋转
+    /// @warning 组合旋转是先应用当前旋转，再应用下一个旋转。
+    /// @param next 下一个旋转
+    /// @return 组合旋转
+    Rotation composed(const Rotation& next) const;
+
+    /// @brief 组合下一个旋转
+    /// @warning 组合旋转是先应用当前旋转，再应用下一个旋转。
+    /// @param next 下一个旋转
+    /// @return 组合旋转
+    Rotation operator*(const Rotation& next) const;
+
+    /// @brief 组合下一个旋转
+    /// @warning 组合旋转是先应用当前旋转，再应用下一个旋转。
+    /// @param next 下一个旋转
+    /// @return 组合旋转
+    Rotation& operator*=(const Rotation& next);
+
+    /// @brief 获取逆旋转
+    /// @param inversed 逆旋转
+    void getInverse(Rotation& inversed) const;
+
+    /// @brief 获取逆旋转
+    /// @return 逆旋转
+    Rotation inverse() const;
+
+    /// @brief 变换向量
+    /// @param vector 向量
+    /// @param vectorOut 变换后的向量
+    void transformVector(const Vector3d& vector, Vector3d& vectorOut) const;
+
+
+    /// @brief 变换向量（逆变换）
+    /// @warning 注意：这里是逆变换，等价于 `inverse().transformVector(...)`;
+    /// @param vector 向量
+    /// @param vectorOut 变换后的向量
+    void transformVectorInv(const Vector3d& vector, Vector3d& vectorOut) const;
+
+    /// @brief 变换向量
+    /// @param vector 向量
+    /// @return 变换后的向量
+    Vector3d transformVector(const Vector3d& vector) const;
+
+
+    /// @brief 变换向量（逆变换）
+    /// @param vector 向量
+    /// @return 变换后的向量
+    Vector3d transformVectorInv(const Vector3d& vector) const;
+
+protected:
+    Matrix3d matrix_{};
+};
+
+
+
+A_ALWAYS_INLINE Rotation::Rotation(const Quaternion& quat)
+{
+    aQuatToMatrix(quat, matrix_);
+}
+
+
+A_ALWAYS_INLINE Rotation::Rotation(const Matrix3d& mat)
+    : matrix_(mat)
+{
+}
+
+A_ALWAYS_INLINE Rotation::Rotation(double angle, const Vector3d &axis)
+    : Rotation(AngleAxis(angle, axis))
+{
+}
+
+A_ALWAYS_INLINE Rotation::Rotation(const AngleAxis &aa)
+    : matrix_(aa.toRotationMatrix())
+{
+}
+
+A_ALWAYS_INLINE Rotation Rotation::Identity()
+{
+    return Rotation(Matrix3d::Identity());
+}
+
+A_ALWAYS_INLINE Quaternion Rotation::getQuaternion() const
+{
+    return aMatrixToQuat(matrix_);
+}
+
+A_ALWAYS_INLINE void Rotation::setQuaternion(const Quaternion& quat)
+{
+    aQuatToMatrix(quat, matrix_);
+}
+
+A_ALWAYS_INLINE Vector3d Rotation::getAxis() const
+{
+    AngleAxis aa;
+    aMatrixToAngleAxis(matrix_, aa);
+    return aa.axis();
+}
+
+A_ALWAYS_INLINE double Rotation::getAngle() const
+{
+    AngleAxis aa;
+    aMatrixToAngleAxis(matrix_, aa);
+    return aa.angle();
+}
+
+A_ALWAYS_INLINE void Rotation::getAngleAxis(double &angle, Vector3d &axis) const
+{
+    AngleAxis aa;
+    getAngleAxis(aa);
+    axis = aa.axis();
+    angle = aa.angle();
+}
+
+A_ALWAYS_INLINE void Rotation::setAngleAxis(double angle, const Vector3d &axis)
+{
+    setAngleAxis(AngleAxis(angle, axis));
+}
+
+A_ALWAYS_INLINE void Rotation::getAngleAxis(AngleAxis &aa) const
+{
+    aMatrixToAngleAxis(matrix_, aa);
+}
+
+A_ALWAYS_INLINE void Rotation::setAngleAxis(const AngleAxis &aa)
+{
+    matrix_ = aa.toRotationMatrix();
+}
+
+A_ALWAYS_INLINE Rotation& Rotation::compose(const Rotation &next)
+{
+    matrix_ = next.matrix_ * matrix_;
+    return *this;
+}
+
+A_ALWAYS_INLINE Rotation Rotation::composed(const Rotation &next) const
+{
+    return Rotation(next.matrix_ * matrix_);
+}
+
+A_ALWAYS_INLINE Rotation Rotation::operator*(const Rotation &next) const
+{
+    return composed(next);
+}
+
+A_ALWAYS_INLINE Rotation &Rotation::operator*=(const Rotation &next)
+{
+    return compose(next);
+}
+
+A_ALWAYS_INLINE void Rotation::getInverse(Rotation &inversed) const
+{
+    inversed.matrix_ = this->matrix_.transpose();
+}
+
+A_ALWAYS_INLINE Rotation Rotation::inverse() const
+{
+    Rotation retval;
+    this->getInverse(retval);
+    return retval;
+}
+
+A_ALWAYS_INLINE void Rotation::transformVector(const Vector3d &vector, Vector3d &vectorOut) const
+{
+    vectorOut = this->matrix_ * vector;
+}
+
+A_ALWAYS_INLINE void Rotation::transformVectorInv(const Vector3d &vector, Vector3d &vectorOut) const
+{
+    vectorOut = vector * this->matrix_;
+}
+
+A_ALWAYS_INLINE Vector3d Rotation::transformVector(const Vector3d& vector) const
+{
+    Vector3d retval;
+    this->transformVector(vector, retval);
+    return retval;
+}
+
+A_ALWAYS_INLINE Vector3d Rotation::transformVectorInv(const Vector3d &vector) const
+{
+    Vector3d retval;
+    this->transformVectorInv(vector, retval);
+    return retval;
+}
+
+AST_NAMESPACE_END

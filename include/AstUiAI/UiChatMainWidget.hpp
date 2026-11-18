@@ -1,0 +1,57 @@
+﻿/// @file      UiChatMainWidget.hpp
+/// @brief     聊天主控件 — 会话列表 + 聊天面板的组合
+/// @details   右侧为聊天面板，左侧为会话列表（暂为占位，后续迭代实现）。
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-06-17
+
+#pragma once
+
+#include "AstGlobal.h"
+#include <QWidget>
+#include <memory>
+
+AST_NAMESPACE_BEGIN
+
+class ChatSession;
+class UiChatPanel;
+
+/*!
+    @addtogroup UiAI
+    @{
+*/
+
+/// @brief 聊天主控件
+/// @details 组合会话列表（左侧）和聊天面板（右侧）。
+///          MVP 阶段会话列表为占位，后续迭代实现多会话管理。
+class AST_UIAI_API UiChatMainWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    /// @brief 构造函数
+    /// @param session 聊天会话（非拥有）
+    /// @param parent 父控件
+    explicit UiChatMainWidget(ChatSession* session, QWidget* parent = nullptr);
+
+    ~UiChatMainWidget() override;
+    UiChatMainWidget(const UiChatMainWidget&) = delete;
+    UiChatMainWidget& operator=(const UiChatMainWidget&) = delete;
+
+    /// @brief 获取聊天面板
+    UiChatPanel* chatPanel() const { return chatPanel_; }
+
+    /// @brief 获取关联的聊天会话
+    ChatSession* session() const;
+
+    /// @brief 设置聊天会话
+    void setSession(ChatSession* session);
+
+private:
+    void setupUi();
+
+    UiChatPanel* chatPanel_ = nullptr;
+};
+
+/*! @} */
+
+AST_NAMESPACE_END

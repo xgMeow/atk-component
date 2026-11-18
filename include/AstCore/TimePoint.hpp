@@ -1,0 +1,335 @@
+﻿/// @file      TimePoint.hpp
+/// @brief     绝对时间点
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      15.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "Duration.hpp"             // for LongDuration
+#include "AstUtil/Constants.hpp"      // for kJ2000XXXX
+#include "AstCore/JulianDate.hpp"    
+#include "AstCore/DateTime.hpp"
+#include "AstCore/RunTime.hpp"
+#include "AstUtil/StringView.hpp"
+#include <stdint.h>                 // for int64_t
+#include <cmath>                    // for std::isnan
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup Time
+    @{
+*/
+
+
+
+class DateTime;
+
+class LongDuration;
+class ShortDuration;
+class DaySecDuration;
+
+class TAIScale;
+class TDBScale;
+class TTScale;
+class UTCScale;
+
+class TimePoint;
+
+constexpr static int kTimePointDefaultFormatPrecision = 6;
+
+
+// --------------------
+// 时间点与时间系统的转换
+// --------------------
+
+/// @brief 将时间点转换为儒略日数（协调世界时 UTC）
+AST_CORE_API void aTimePointToUTC(const TimePoint& time, JulianDate& jdUTC);
+
+/// @brief 将时间点转换为儒略日数（地球时TT）
+AST_CORE_API void aTimePointToTT(const TimePoint& time, JulianDate& jdTT);
+
+/// @brief 将时间点转换为儒略日数（质心动力学时TDB）
+AST_CORE_API void aTimePointToTDB(const TimePoint& time, JulianDate& jdTDB);
+
+/// @brief 将时间点转换为儒略日数（原子时 TAI）
+AST_CORE_API void aTimePointToTAI(const TimePoint& time, JulianDate& jdTAI);
+
+/// @brief 将时间点转换为儒略日数（世界时 UT1）
+AST_CORE_API void aTimePointToUT1(const TimePoint& time, JulianDate& jdUT1);
+
+/// @brief 将时间点转换为日期时间（协调世界时 UTC）
+AST_CORE_API void aTimePointToUTC(const TimePoint& time, DateTime& dttmUTC);
+
+/// @brief 将时间点转换为日期时间（地球时TT）
+AST_CORE_API void aTimePointToTT(const TimePoint& time, DateTime& dttmTT);
+
+/// @brief 将时间点转换为日期时间（质心动力学时TDB）
+AST_CORE_API void aTimePointToTDB(const TimePoint& time, DateTime& dttmTDB);
+
+/// @brief 将时间点转换为日期时间（原子时 TAI）
+AST_CORE_API void aTimePointToTAI(const TimePoint& time, DateTime& dttmTAI);
+
+/// @brief 将时间点转换为日期时间（世界时 UT1）
+AST_CORE_API void aTimePointToUT1(const TimePoint& time, DateTime& dttmUT1);
+
+
+
+// ----------------
+// 时间点格式化与解析
+// ----------------
+
+
+/// @brief 将时间点格式化为字符串
+AST_CORE_CAPI errc_t aTimePointFormat(const TimePoint& time, std::string& str, int precision = kTimePointDefaultFormatPrecision);
+
+/// @brief 从字符串解析时间点
+AST_CORE_CAPI errc_t aTimePointParse(StringView str, TimePoint& time);
+
+
+/// @brief 绝对时间点
+class TimePoint
+{
+public:
+    /// @brief 获取默认时间点
+    AST_CORE_API
+    static TimePoint Default();
+
+    /// @brief 获取“无数据/非法”时间点（NaN 时间）
+    /// @return fractional 为 NaN 的 TimePoint，表示没有时间值 / 非法时间值
+    AST_CORE_API
+    static TimePoint NaN();
+
+    /// @brief 获取历元时间点
+    /// @see RunTimeEpoch.cpp
+    AST_CORE_API
+    static TimePoint Epoch();
+
+    /// @brief 获取当前时间点
+    AST_CORE_API
+    static TimePoint CurrentTime();
+
+    /// @brief 获取今日00:00:00 UTC时间点
+    AST_CORE_API 
+    static TimePoint TodayUTC();
+
+    /// @brief 获取明天00:00:00 UTC时间点
+    AST_CORE_API
+    static TimePoint TomorrowUTC();
+
+    /// @brief 从UTC日期时间创建时间点
+    AST_CORE_API
+    static TimePoint FromUTC(int year, int month, int day, int hour, int minute, double second);
+
+    /// @brief 从UTC日期时间创建时间点
+    AST_CORE_API
+    static TimePoint FromUTC(const DateTime& dttmUTC);
+
+    /// @brief 从UTC年份和年内天数创建时间点
+    /// @param year 四位年份（如 1997）
+    /// @param dayOfYear 年内天数及小数部分（如 320.90946019，1-based）
+    AST_CORE_API
+    static TimePoint FromYD(int year, double dayOfYear);
+
+    /// @brief 从 TLE 历元格式的 double 值创建 UTC 时间点
+    /// @param tleYD TLE 历元值，格式 YYDDD.DDDDDDDD（如 97320.90946019）
+    /// @details 自动处理两位年份到四位年份的转换（>=57 → 19xx, <57 → 20xx）
+    AST_CORE_API
+    static TimePoint FromTLEYD(double tleYD);
+
+    /// @brief 从北京时日期时间创建时间点
+    AST_CORE_API
+    static TimePoint FromBJT(const DateTime& dttmBJT);
+
+    /// @brief 从原子时TAI日期时间创建时间点
+    AST_CORE_API
+    static TimePoint FromTAI(const DateTime& dttmTAI);
+
+    /// @brief 从原子时TAI创建时间点
+    AST_CORE_API 
+    static TimePoint FromTAI(const JulianDate& jdTAI);
+
+    /// @brief 从地球时TT创建时间点
+    AST_CORE_API
+    static TimePoint FromTT(const JulianDate& jdTT);
+
+    AST_CORE_API
+    static TimePoint FromTT(const DateTime& dttmTT);
+
+    /// @brief 从质心动力学时TDB创建时间点
+    AST_CORE_API 
+    static TimePoint FromTDB(const JulianDate& jdTDB);
+
+    /// @brief 从不精确的儒略日数（地球时TT）创建时间点
+    AST_CORE_API
+    static TimePoint FromImpreciseJDTT(double jdTT);
+
+    /// @brief J2000.0 TT 时间点
+    static TimePoint J2000TT(){
+        return {0, -kTTMinusTAI};
+    }
+
+    /// @brief 从字符串解析时间点
+    /// @param str 时间点字符串
+    /// @return TimePoint 解析后的时间点对象
+    AST_CORE_API
+    static TimePoint Parse(StringView str);
+
+    /// @brief 从字符串解析UTC时间
+    AST_CORE_API
+    static TimePoint ParseUTC(StringView str);
+
+    /// @brief 从字符串解析北京时间
+    AST_CORE_API
+    static TimePoint ParseBJT(StringView str);
+public:
+    /// @brief 时间点的整数秒数部分
+    int64_t integerPart() const { return duration_.integer_; }
+
+    /// @brief 时间点的小数秒数部分
+    double fractionalPart() const { return duration_.fractional_; }
+public:
+    /// @brief 是否为无穷大/无穷小时间点
+    bool isInf() const{return std::isinf(duration_.fractional_);}
+
+    /// @brief 是否为“无数据/非法”时间点
+    bool isNaN() const { return std::isnan(duration_.fractional_); }
+
+    /// @brief 是否为有效时间点
+    bool isValid() const { return !isNaN(); }
+public:
+    /// @brief 计算时间点与 J2000  epoch 的时间差（天）
+    double daysFromJ2000TT() const{
+        return ((double)integerPart() / kSecondsPerDay) + (fractionalPart() + kTTMinusTAI) / kSecondsPerDay;
+    }
+
+    /// @brief 计算时间点与 J2000  epoch 的时间差（儒略世纪）
+    double julianCenturyFromJ2000TT() const{
+        return daysFromJ2000TT() / kDaysPerJulianCentury;
+    }
+
+    /// @brief 将时间点转换为儒略日数（地球时TT）
+    void toTT(JulianDate& jdTT) const{
+        aTimePointToTT(*this, jdTT);
+    }
+    /// @brief 将时间点转换为儒略日数（地球时TT）
+    JulianDate toTT() const{
+        JulianDate jdTT;
+        toTT(jdTT);
+        return jdTT;
+    }
+    /// @brief 将时间点转换为儒略日数（质心动力学时TDB）
+    void toTDB(JulianDate& jdTDB) const{
+        aTimePointToTDB(*this, jdTDB);
+    }
+    /// @brief 将时间点转换为儒略日数（质心动力学时TDB）
+    JulianDate toTDB() const{
+        JulianDate jdTDB;
+        toTDB(jdTDB);
+        return jdTDB;
+    }
+    /// @brief 将时间点转换为儒略日数（原子时 TAI）
+    void toTAI(JulianDate& jdTAI) const{
+        aTimePointToTAI(*this, jdTAI);
+    }
+    /// @brief 将时间点转换为儒略日数（原子时 TAI）
+    JulianDate toTAI() const{
+        JulianDate jdTAI;
+        toTAI(jdTAI);
+        return jdTAI;
+    }
+    /// @brief 将时间点转换为相对于参考历元的秒数
+    double toEpochSecond() const{
+        return aTimePointToEpochSecond(*this);
+    }
+
+    /// @brief 计算与另一个时间点的时间差（秒数）
+    double durationFrom(const TimePoint& other) const{
+        return duration_.minusInSecond(other.duration_);
+    }
+
+    /// @brief 计算与另一个时间点的时间差（天）
+    double daysFrom(const TimePoint& other) const{
+        return duration_.minusInDay(other.duration_);
+    }
+
+public:
+    // ————————————————————————
+    // 运算符重载
+    // ————————————————————————
+
+    double operator-(const TimePoint& other) const { return durationFrom(other); }
+    TimePoint operator+(double second) const { return {integerPart(), fractionalPart() + second}; }
+    TimePoint operator-(double second) const { return {integerPart(), fractionalPart() - second}; }
+    TimePoint& operator+=(double second) { duration_.fractional_ += second; return *this; }
+    TimePoint& operator-=(double second) { duration_.fractional_ -= second; return *this; }
+    bool operator==(const TimePoint& other) const { return durationFrom(other) == 0.0; }
+    bool operator!=(const TimePoint& other) const { return durationFrom(other) != 0.0; }
+    bool operator>(const TimePoint& other) const { return durationFrom(other) > 0.0; }
+    bool operator<(const TimePoint& other) const { return durationFrom(other) < 0.0; }
+    bool operator>=(const TimePoint& other) const { return durationFrom(other) >= 0.0; }
+    bool operator<=(const TimePoint& other) const { return durationFrom(other) <= 0.0; }
+
+public:
+
+    /// @brief 将时间点格式化为字符串
+    /// @param precision 格式化精度（秒数小数位数）
+    /// @return 格式化后的字符串
+    std::string toString(int precision = kTimePointDefaultFormatPrecision) const
+    {
+        std::string str;
+        aTimePointFormat(*this, str, precision);
+        return str;
+    }
+public:
+    /// @brief 计算时间点偏移后的新时间点，按默认时间尺度进行时间偏移
+    /// @param second 偏移秒数
+    /// @return 偏移后的新时间点
+    TimePoint shiftedBySecond(double second) const{
+        return {integerPart(), fractionalPart() + second};
+    }
+
+    /// @brief 计算时间点偏移后的新时间点，按TDB时间尺度进行时间偏移
+    /// @param second TDB秒数
+    /// @return 偏移后的新时间点
+    AST_CORE_API TimePoint shiftedBySecondInTDB(double second) const;
+
+protected:
+    static TimePoint FromIntegerFractional(int64_t integer, double fractional);
+public:
+    LongDuration    duration_;
+};
+
+
+/// @brief 从UTC字符串解析时间点
+inline TimePoint operator ""_utc(const char* str, size_t len)
+{
+    return TimePoint::ParseUTC(StringView(str, len));
+}
+
+/// @brief 从北京时字符串解析时间点
+inline TimePoint operator ""_bjt(const char* str, size_t len)
+{
+    return TimePoint::ParseBJT(StringView(str, len));
+}
+
+/// @brief 从时间点字符串解析时间点
+inline TimePoint operator ""_timepoint(const char* str, size_t len)
+{
+    return TimePoint::Parse(StringView(str, len));
+}
+
+// typedef TimePoint<TDBScale, LongDuration> TDBTime;
+// typedef TimePoint<TTScale, LongDuration> TTTime;
+// typedef TimePoint<UTCScale, LongDuration> UTCTime;
+// typedef TimePoint<TAIScale, LongDuration> TAITime;
+
+// typedef TAITime AbsTime;
+// typedef TAITime AstTime;
+
+
+/*! @} */
+
+AST_NAMESPACE_END

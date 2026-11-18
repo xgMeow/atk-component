@@ -1,0 +1,81 @@
+﻿/// @file      ActiveScript.hpp
+/// @brief     
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-04-29
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "ScriptExecutor.hpp"
+#include <memory>
+
+
+struct IDispatch;
+typedef struct tagVARIANT VARIANT;
+
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup 
+    @{
+*/
+
+#if defined(AST_BUILD_LIB) && !defined(SWIG)
+errc_t aActiveScriptGetVariable(IDispatch& pDisp, const std::wstring& name, VARIANT& result);
+errc_t aActiveScriptSetVariable(IDispatch& pDisp, const std::wstring& name, const VARIANT& value);
+errc_t aActiveScriptSetVariableEx(IDispatch& pDisp, const std::wstring& name, const VARIANT& value);
+bool   aActiveScriptHasVariable(IDispatch& pDisp, const std::wstring& name);
+#endif
+
+/// @brief 微软Active系列脚本执行器
+/// @details 用于执行微软Active系列脚本: JScriptScript、JScript 等 
+///          通过COM接口 IActiveScript 等执行脚本
+class AST_SCRIPT_API ActiveScriptExecutor: public ScriptExecutor
+{
+    // 前向声明内部实现类
+    class Impl;
+
+public:
+    using ScriptExecutor::execute;
+
+    ActiveScriptExecutor();
+    /// @brief 构造函数
+    /// @details 允许指定脚本引擎 (如 L"JScript" / L"VBScript")
+    /// @param progId 脚本引擎 ProgID
+    explicit ActiveScriptExecutor(const wchar_t* progId); 
+    ~ActiveScriptExecutor() override;
+
+    errc_t initialize() override;
+    void finalize() override;
+    errc_t execute(StringView script, ScriptResult* resultOut=nullptr) override;
+    errc_t evaluate(StringView expression, ScriptResult* resultOut=nullptr) override;
+    std::string getLastError() const override;
+
+    // 下面这些重载会隐藏基类同名的其他重载（含字符串字面量重载），需要显式引回
+    using ScriptExecutor::setVariable;
+
+    errc_t setVariable(StringView name, StringView value) override;
+    errc_t setVariable(StringView name, double value) override;
+    errc_t setVariable(StringView name, int value) override;
+    errc_t setVariable(StringView name, bool value) override;
+
+    errc_t getVariable(StringView name, std::string& value) const override;
+    errc_t getVariable(StringView name, double& value) const override;
+    errc_t getVariable(StringView name, int& value) const override;
+    errc_t getVariable(StringView name, bool& value) const override;
+
+protected:
+    /// 设置脚本引擎 ProgID（由子类如 JScriptExecutor 在构造时调用）
+    void setProgID(const wchar_t* progId);
+
+    /// @brief 获取脚本的全局根对象
+    IDispatch* getGlobal() const;
+protected:
+    std::unique_ptr<Impl> impl_; // 隐藏 COM 对象与状态
+};
+
+/*! @} */
+
+AST_NAMESPACE_END

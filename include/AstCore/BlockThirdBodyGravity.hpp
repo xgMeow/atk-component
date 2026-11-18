@@ -1,0 +1,90 @@
+﻿/// @file      BlockThirdBodyGravity.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-06-24
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstCore/BlockAstro.hpp"
+#include "AstCore/BlockDerivative.hpp"
+#include "AstCore/GravityCalculator.hpp"
+#include "AstCore/Axes.hpp"
+#include "AstMath/Vector.hpp"
+
+AST_NAMESPACE_BEGIN
+
+/// @brief 三体重力场函数块
+/// @details
+/// 计算第三天体的球谐展开重力场摄动加速度（直接引力与间接引力之差）。
+///
+/// 工作流程：
+///   1. 获取第三天体在预报系下的位置 r₃
+///   2. 计算航天器相对于第三天体的位置: r_rel = r - r₃
+///   3. 将 r_rel 旋转变换到第三天体的重力场固连坐标系
+///   4. 调用 GravityCalculator 计算固连系下的总重力加速度（含中心项 + 摄动项）
+///   5. 将加速度逆变换回报系（得到直接项 a_direct）
+///   6. 计算间接项：-r₃ 变换到重力固连系，同样调用 GravityCalculator 计算总加速度再逆变换（得到 a_indirect）
+///   7. 总摄动: a_total = a_direct - a_indirect
+///   8. 累加到速度导数
+///
+/// 方程：
+///   a = a_direct(r - r₃)  -  a_indirect(-r₃)
+///
+/// 其中：
+///   a_direct(r - r₃)   = GravityCalculator::calcTotalAcceleration(r - r₃)
+///                         航天器在第三天体引力场中的总加速度（含中心项与摄动项）
+///   a_indirect(-r₃)     = GravityCalculator::calcTotalAcceleration(-r₃)
+///                         中心天体在第三天体引力场中的总加速度（含中心项与摄动项）
+/// 当 degree=0 时两项退化为点质量公式，与 BlockThirdBodyPointMass 结果一致。
+///
+/// 输入端口：
+///   - "Pos"：位置向量（3维，预报坐标系下，以中心天体为参考）
+///
+/// 输出端口：
+///   - "AccThirdBody"：三体引力加速度（3维）
+///
+/// 导数端口：
+///   - "Vel"：速度导数（3维），累加三体引力加速度
+///
+/// @see BlockThirdBodyPointMass, BlockGravity
+class AST_CORE_API BlockThirdBodyGravity : public BlockDerivative
+{
+public:
+    BlockThirdBodyGravity();
+
+    BlockThirdBodyGravity(const BlockThirdBodyGravity&) = delete;
+    BlockThirdBodyGravity& operator=(const BlockThirdBodyGravity&) = delete;
+
+    explicit BlockThirdBodyGravity(Point* thirdBody, GravityField&& gravityField,
+                                   int degree, int order, Axes* gravityAxes,
+                                   Frame* propagationFrame);
+
+    errc_t run(const SimTime& simTime) override;
+
+    /// @brief 设置是否考虑重力场系数长期变化
+    void setConsiderVariations(bool considerVariations) { considerVariations_ = considerVariations; }
+protected:
+    /// @brief 准备计算：空指针检查、获取第三体位置、计算旋转变换、更新重力场系数
+    /// @param simTime 当前仿真时间
+    /// @param[out] thirdBodyPos 第三体在预报系中的位置
+    /// @param[out] rotation 从预报系到第三体固连系的旋转变换
+    /// @return eNoError 成功，否则返回错误码
+    errc_t prepare(const SimTime& simTime, Vector3d& thirdBodyPos, Rotation& rotation);
+    Vector3d* posCBI{&vectorBuffer};                          ///< 位置（以中心天体为参考）
+    Vector3d* accThirdBody{&vectorBuffer};                    ///< 三体重力加速度（输出）
+    Vector3d* velocityDerivative_{&vectorBuffer};             ///< 速度导数
+    Vector3d vectorBuffer{};                                  ///< 向量缓冲区
+private:
+    void init();
+protected:
+    Point* thirdBody_{};                              ///< 三体
+    HAxes  gravityAxes_;                              ///< 三体重力场固连系
+    HAxes  propagationAxes_;                          ///< 预报系轴系
+    Frame* propagationFrame_{};                       ///< 预报系（用于获取三体位置）
+    GravityCalculatorDefault gravityCalculator_;      ///< 重力计算器
+    bool   considerVariations_{false};                ///< 是否考虑重力场系数长期变化
+};
+
+AST_NAMESPACE_END

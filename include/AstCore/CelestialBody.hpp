@@ -1,0 +1,523 @@
+﻿/// @file      CelestialBody.hpp
+/// @brief     
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      21.11.2025
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstCore/Object.hpp"
+#include "AstCore/GravityField.hpp"
+#include "AstCore/JplDe.hpp"
+#include "AstCore/BodyEphemeris.hpp"
+#include "AstCore/BodyOrientation.hpp"
+#include "AstCore/AxesBodyInertial.hpp"
+#include "AstCore/AxesBodyFixed.hpp"
+#include "AstCore/AxesBodyMOD.hpp"
+#include "AstCore/AxesBodyTOD.hpp"
+#include "AstCore/Point.hpp"
+#include "AstCore/Frame.hpp"
+#include "AstCore/AxesAPI.hpp"
+#include "AstCore/BodyShape.hpp"
+#include "AstUtil/SharedPtr.hpp"
+#include "AstUtil/ScopedPtr.hpp"
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup SolarSystem
+    @{
+*/
+
+class CelestialBody;
+using Body = CelestialBody;
+
+
+/// @brief 星历来源
+enum class EEphemerisSource
+{
+    eBodyEphemeris,      ///< 天体星历
+    eJplDE,              ///< JPL DE 星历
+    eJplSpice,           ///< JPL SPICE 星历
+    eJplSpiceBarycenter, ///< JPL SPICE 行星系质心星历
+};
+
+
+
+/// @brief 从天体重力场文件中读取其引力常数
+/// @param body 中心天体
+/// @param gravityModel 重力场模型
+/// @param gm 输出引力常数，单位：m³/s²
+/// @return errc_t 错误码
+AST_CORE_CAPI errc_t aGetGravityParameter(const Body& body, StringView gravityModel, double& gm);
+
+
+/// @brief 天体
+class AST_CORE_API CelestialBody : public Point
+{
+public:
+    AST_OBJECT(CelestialBody)
+    AST_PROPERT(Shape)
+    AST_PROPERT(Ephemeris)
+    AST_PROPERT(Orientation)
+    static CelestialBody* Resolve(StringView value);
+
+    CelestialBody();
+    explicit CelestialBody(SolarSystem* solarSystem);
+    explicit CelestialBody(CelestialBody* parentBody);
+    ~CelestialBody();
+
+    /// @brief 获取JPL SPICE ID
+    int getJplSpiceId() const { return jplSpiceId_; }
+    void setJplSpiceId(int id) { jplSpiceId_ = id; }
+
+    /// @brief 获取JPL索引
+    int getJplIndex() const { return jplIndex_; }
+    void setJplIndex(int index);
+
+    /// @brief 获取天体数据目录路径
+    std::string getDirpath() const;
+
+    /// @brief 获取太阳系
+    SolarSystem* getSolarSystem() const;
+
+    /// @brief 获取父天体
+    CelestialBody* getParent() const { return parent_.get(); }
+public:
+
+    /// @brief 获取重力模型名称
+    const std::string& getGravityModel() const{ return gravityField_.getModelName(); }
+
+    /// @brief 从文件加载天体数据
+    /// @param  filepath    - 天体数据文件路径
+    /// @retval             - 错误码
+    errc_t load(StringView filepath);
+
+    /// @brief 获取天体半径
+    double getRadius() const { return radius_; }
+
+    /// @brief 获取天体的引力常数
+    double getGM() const { return gm_; }
+
+    /// @brief 获取天体系引力常数（考虑天体的卫星）
+    double getSystemGM() const { return systemGM_; }
+
+    /// @brief 设置重力模型
+    errc_t setGravityModel(StringView model);
+
+    /// @brief 获取重力场参考半径
+    double getGravityRefDistance() const { return gravityField_.refDistance(); }
+
+    /// @brief 获取J2项
+    double getJ2() const { return getJn(2); }
+
+    /// @brief 获取J3项
+    double getJ3() const { return getJn(3); }
+
+    /// @brief 获取J4项
+    double getJ4() const { return getJn(4); }
+
+    /// @brief 获取J5项
+    double getJ5() const { return getJn(5); }
+
+    /// @brief 获取J6项
+    double getJ6() const { return getJn(6); }
+
+    /// @brief 是否为地球
+    bool isEarth() const { return jplIndex_ == JplDe::eEarth; }
+
+    /// @brief 是否为月球
+    bool isLuna() const { return jplIndex_ == JplDe::eMoon; }
+
+    /// @brief 获取天体位置（ICRF）
+    /// @param  tp          - 时间点
+    /// @param  pos         - 输出位置（ICRF）
+    /// @retval             - 错误码
+    errc_t getPosICRF(const TimePoint& tp, Vector3d& pos) const;
+
+
+    /// @brief 获取天体位置和速度（ICRF）
+    /// @param  tp          - 时间点
+    /// @param  pos         - 输出位置（ICRF）
+    /// @param  vel         - 输出速度（ICRF）
+    /// @retval             - 错误码
+    errc_t getPosVelICRF(const TimePoint& tp, Vector3d& pos, Vector3d& vel) const;
+
+public: // 从Point继承重写的函数
+
+    Frame* getFrame() const final;
+    errc_t getPos(const TimePoint& tp, Vector3d& pos) const final;
+    errc_t getPosVel(const TimePoint& tp, Vector3d& pos, Vector3d& vel) const final;
+
+PROPERTIES: // 天体的形状、重力场、星历、姿态
+
+    /// @brief 获取天体形状
+    BodyShape* getShape() const { return shape_.get(); }
+    BodyShape* shape() const {return shape_.get(); }
+
+    /// @brief 获取天体星历
+    BodyEphemeris* getEphemeris() const { return ephemeris_.get(); }
+    BodyEphemeris* ephemeris() const {return ephemeris_.get(); }
+
+    /// @brief 获取天体姿态
+    BodyOrientation* getOrientation() const { return orientation_.get(); }
+    BodyOrientation* orientation() const {return orientation_.get(); }
+public:
+    BodyEphemeris* getEphemeris(EEphemerisSource ephemerisSource) const;
+public:
+    /// @brief 获取天体重力场
+    const GravityField& getGravityField() const { return gravityField_; }
+    const GravityField& gravityField() const {return gravityField_; }
+
+public:
+
+    /// @brief 获取天体中心
+    Point* getPointCenter() const { return const_cast<CelestialBody*>(this); }
+    Point* pointCenter() const {return const_cast<CelestialBody*>(this); }
+
+    /// @brief 获取天体惯性轴系
+    Axes* getAxesInertial() const { return axesInertial_.get(); }
+    Axes* axesInertial() const {return axesInertial_.get(); }
+
+    /// @brief 获取天体固定轴系
+    Axes* getAxesFixed() const { return axesFixed_.get(); }
+    Axes* axesFixed() const {return axesFixed_.get(); }
+
+    /// @brief 获取天体MOD轴系
+    Axes* getAxesMOD() const { return axesMOD_.get(); }
+    Axes* axesMOD() const {return axesMOD_.get(); }
+
+    /// @brief 获取天体TOD轴系
+    Axes* getAxesTOD() const { return axesTOD_.get(); }
+    Axes* axesTOD() const {return axesTOD_.get(); }
+
+    /// @brief 获取天体轴系
+    /// @param  name        - 轴系名称，例如Inertial、Fixed、MOD、TOD等
+    /// @retval             - 轴系指针
+    /// @note               - 如果轴系不存在，则返回nullptr
+    Axes* getAxes(StringView name) const;
+
+#ifndef SWIG // 还没解决好swig封装智能指针的问题，暂时屏蔽
+public:
+    /// @brief 创建新的历元轴系
+    /// @param  sourceAxes  - 源轴系
+    /// @param  tp          - 时间点
+    /// @param  reference   - 参考轴系
+    /// @retval             - 新的历元轴系
+    HAxes makeEpochAxes(Axes* sourceAxes, const TimePoint& tp, Axes* reference) const{return aMakeEpochAxes(sourceAxes, tp, reference);}
+
+    /// @brief 创建新的历元轴系
+    /// @param  sourceAxes  - 源轴系
+    /// @param  time        - 时间点
+    /// @param  reference   - 参考轴系
+    /// @retval             - 新的历元轴系
+    HAxes makeEpochAxes(Axes* sourceAxes, EventTime* time, Axes* reference) const{return aMakeEpochAxes(sourceAxes, time, reference);}
+
+
+    /// @brief 创建新的历元坐标系
+    /// @param  sourceAxes  - 源轴系
+    /// @param  tp          - 时间点
+    /// @param  reference   - 参考轴系
+    /// @retval             - 新的历元坐标系
+    HFrame makeEpochFrame(Axes* sourceAxes, const TimePoint& tp, Axes* reference) const;
+
+    /// @brief 创建新的历元坐标系
+    /// @param  sourceAxes  - 源轴系
+    /// @param  time        - 时间点
+    /// @param  reference   - 参考轴系
+    /// @retval             - 新的历元坐标系
+    HFrame makeEpochFrame(Axes* sourceAxes, EventTime* time, Axes* reference) const;
+
+    /// @brief 创建新的历元平赤道轴系
+    HAxes makeAxesMOE(const TimePoint& tp) const;
+
+    /// @brief 创建新的历元平赤道轴系
+    HAxes makeAxesMOE(EventTime* time) const;
+
+    /// @brief 创建新的历元真赤道轴系
+    HAxes makeAxesTOE(const TimePoint& tp) const;
+
+    /// @brief 创建新的历元真赤道轴系
+    HAxes makeAxesTOE(EventTime* time) const;
+
+    /// @brief 创建新的历元平赤道坐标系
+    HFrame makeFrameMOE(const TimePoint& tp) const;
+
+    /// @brief 创建新的历元平赤道坐标系
+    HFrame makeFrameMOE(EventTime* time) const;
+
+    /// @brief 创建新的历元真赤道坐标系
+    HFrame makeFrameTOE(const TimePoint& tp) const;
+
+    /// @brief 创建新的历元真赤道坐标系
+    HFrame makeFrameTOE(EventTime* time) const;
+
+public:
+    /// @brief 创建新的天体坐标系
+    /// @param  axes        - 轴系
+    HFrame makeFrame(Axes* axes) const;
+
+    /// @brief 创建新的天体惯性坐标系
+    HFrame makeFrameInertial() const;
+
+    /// @brief 创建新的天体固连坐标系
+    HFrame makeFrameFixed() const;
+
+    /// @brief 创建新的天体MOD坐标系(天体平赤道系)
+    HFrame makeFrameMOD() const;
+
+    /// @brief 创建新的天体TOD坐标系(天体真赤道系)
+    HFrame makeFrameTOD() const;
+
+    /// @brief 创建新的天体J2000坐标系
+    HFrame makeFrameJ2000() const;
+
+    /// @brief 创建新的天体ICRF坐标系
+    HFrame makeFrameICRF() const;
+public:
+    /// @brief 获取天体惯性坐标系
+    Frame* getFrameInertial() const;
+    Frame* frameInertial() const {return getFrameInertial();}
+
+    /// @brief 获取天体固连坐标系
+    Frame* getFrameFixed() const;
+    Frame* frameFixed() const {return getFrameFixed();}
+
+    Frame* getFrameICRF() const;
+
+    Frame* getFrameJ2000() const;
+
+#endif
+protected:
+
+    Axes* getEpochAxesReference() const;
+protected:
+    /// @brief 获取Jn项
+    double getJn(int n) const { return gravityField_.getJn(n); }
+
+    /// @brief 加载重力模型
+    errc_t loadGravityModel(StringView model);
+protected:
+    friend class SolarSystem;
+
+    /// @brief 加载相关的天文参数
+    errc_t loadAstroDefinition(BKVParser& parser);
+
+    /// @brief 加载旋转数据
+    errc_t loadSpinData(BKVParser& parser);
+
+    /// @brief 加载星历相关参数
+    errc_t loadEphemerisData(BKVParser& parser);
+
+    /// @brief 加载地球相关参数
+    errc_t loadEarth(BKVParser& parser);   
+
+    /// @brief 加载月球相关参数
+    errc_t loadMoon(BKVParser& parser);   
+
+    /// @brief 加载MeanEarth定义
+    errc_t loadMeanEarthDefinition(BKVParser& parser);
+
+    A_DISABLE_COPY(CelestialBody)
+private:
+    WeakPtr<SolarSystem>        solarSystem_{};                    ///< 太阳系指针
+    SharedPtr<CelestialBody>    parent_{};                         ///< 父天体
+    double                      gm_{0.0};                        ///< 引力常数
+    double                      systemGM_{0.0};                  ///< 系统引力常数
+    double                      radius_{0.0};                    ///< 天体半径
+    int                         jplSpiceId_{-1};                 ///< JPL SPICE ID
+    int                         jplIndex_{-1};                   ///< JPL DE Index
+    GravityField                gravityField_{};                   ///< 重力场
+    SharedPtr<BodyShape>        shape_{};                          ///< 天体形状
+    SharedPtr<BodyOrientation>  orientation_{};                    ///< 天体姿态
+    SharedPtr<BodyEphemeris>    ephemeris_{};                      ///< 天体星历
+
+    SharedPtr<AxesBodyInertial> axesInertial_{};                   ///< 天体惯性轴
+    SharedPtr<AxesBodyFixed>    axesFixed_{};                      ///< 天体固定轴
+    SharedPtr<AxesBodyMOD>      axesMOD_{};                        ///< 天体MOD轴
+    SharedPtr<AxesBodyTOD>      axesTOD_{};                        ///< 天体TOD轴
+
+    mutable WeakPtr<Frame>      frameInertial_{};                  ///< 天体惯性坐标系
+    mutable WeakPtr<Frame>      frameFixed_{};                     ///< 天体固连坐标系
+
+    mutable SharedPtr<BodyEphemeris> ephemerisDE_{};              ///< 天体DE星历
+    mutable SharedPtr<BodyEphemeris> ephemerisSpice_{};           ///< 天体SPICE星历(spk)
+    mutable SharedPtr<BodyEphemeris> ephemerisSpiceBarycenter_{}; ///< 天体星系质心SPICE星历(考虑其卫星时的天体系质心)
+};
+
+
+enum ESpiceId: int;
+
+/// @brief 获取行星系质心ID
+/// @param planetId 行星ID
+/// @return 行星系质心ID
+AST_CORE_CAPI ESpiceId aGetPlanetBarycenterId(ESpiceId planetId);
+
+
+/// @brief 获取天体绕其父天体的轨道法向
+/// @param axes 轴系
+/// @param body 天体
+/// @param tp 时间点
+/// @param normal 输出轨道法向
+/// @return 错误码，成功返回eNoError
+AST_CORE_CAPI errc_t aBodyOrbitNormalIn
+(
+    Axes& axes,
+    const Body& body,
+    const TimePoint& tp,
+    Vector3d& normal
+);
+
+
+/// @brief 获取天体绕其父天体的轨道法向
+/// @param body 天体
+/// @param tp 时间点
+/// @param normal 输出轨道法向
+/// @return 错误码，成功返回eNoError
+AST_CORE_CAPI errc_t aBodyOrbitNormalInParentInertial
+(
+    const Body& body,
+    const TimePoint& tp,
+    Vector3d& normal
+);
+
+
+/// @brief 获取天体绕其父天体的轨道法向
+/// @param body 天体
+/// @param tp 时间点
+/// @param normal 输出轨道法向
+/// @return 错误码，成功返回eNoError
+AST_CORE_CAPI errc_t aBodyOrbitNormalInICRF
+(
+    const Body& body,
+    const TimePoint& tp,
+    Vector3d& normal
+);
+
+
+
+/// @brief  SPICE 天体ID
+/// @see spicelib/zzidmap.for
+enum ESpiceId: int
+{
+    eSolarSystemBarycenter  = 0,    ///< 太阳系质心
+    eMercuryBarycenter      = 1,    ///< 水星系质心
+    eVenusBarycenter        = 2,    ///< 金星系质心
+    eEarthBarycenter        = 3,    ///< 地月系质心
+    eMarsBarycenter         = 4,    ///< 火星系质心
+    eJupiterBarycenter      = 5,    ///< 木星系质心
+    eSaturnBarycenter       = 6,    ///< 土星系质心
+    eUranusBarycenter       = 7,    ///< 天王星系质心
+    eNeptuneBarycenter      = 8,    ///< 海王星系质心
+    ePlutoBarycenter        = 9,    ///< 冥王星系质心
+
+    eSun                    = 10,   ///< 太阳
+
+    eMercury                = 199,  ///< 水星
+
+    eVenus                  = 299,  ///< 金星
+
+    eEarth                  = 399,  ///< 地球
+    eMoon                   = 301,  ///< 月球
+
+    eMars                   = 499,  ///< 火星
+    ePhobos                 = 401,
+    eDeimos                 = 402,
+
+
+    eJupiter                = 599,  ///< 木星
+    eIo                     = 501,
+    eEuropa                 = 502,
+    eGanymede               = 503,
+    eCallisto               = 504,
+    eAmalthea               = 505,
+    eHimalia                = 506,
+    eElara                  = 507,
+    ePasiphae               = 508,
+    eSinope                 = 509,
+    eLysithea               = 510,
+    eCarme                  = 511,
+    eAnanke                 = 512,
+    eLeda                   = 513,
+    eThebe                  = 514,
+    eAdrastea               = 515,
+    eMetis                  = 516,
+
+    eSaturn                 = 699,  ///< 土星
+    eMimas                  = 601,
+    eEnceladus              = 602,
+    eTethys                 = 603,
+    eDione                  = 604,
+    eRhea                   = 605,
+    eTitan                  = 606,
+    eHyperion               = 607,
+    eIapetus                = 608,
+    ePhoebe                 = 609,
+    eJanus                  = 610,
+    eEpimetheus             = 611,
+    eHelene                 = 612,
+    eTelesto                = 613,
+    eCalypso                = 614,
+    eAtlas                  = 615,
+    ePrometheus             = 616,
+    ePandora                = 617,
+    ePan                    = 618,
+    eMethone                = 632,
+    ePallene                = 633,
+    ePolydeuces             = 634,
+    eDaphnis                = 635,
+    eAnthe                  = 649,
+    eAegaeon                = 653,
+
+
+    eUranus                 = 799,  ///< 天王星
+    eAriel                  = 701,
+    eUmbriel                = 702,
+    eTitania                = 703,
+    eOberon                 = 704,
+    eMiranda                = 705,
+    eCordelia               = 706,
+    eOphelia                = 707,
+    eBianca                 = 708,
+    eCressida               = 709,
+    eDesdemona              = 710,
+    eJuliet                 = 711,
+    ePortia                 = 712,
+    eRosalind               = 713,
+    eBelinda                = 714,
+    ePuck                   = 715,
+
+
+    eNeptune                = 899,  ///< 海王星
+    eTriton                 = 801,
+    eNereid                 = 802,
+    eNaiad                  = 803,
+    eThalassa               = 804,
+    eDespina                = 805,
+    eGalatea                = 806,
+    eLarissa                = 807,
+    eProteus                = 808,
+
+    ePluto                  = 999,  ///< 冥王星
+    eCharon                 = 901,
+};
+
+
+
+using HCelestialBody = SharedPtr<CelestialBody>;        ///< 天体句柄
+using WCelestialBody = WeakPtr<CelestialBody>;          ///< 天体弱引用
+using HBody = HCelestialBody;                           ///< 天体句柄
+using WBody = WCelestialBody;                           ///< 天体弱引用
+
+
+using PCelestialBody = CelestialBody*;                  ///< 天体指针
+using PBody = PCelestialBody;                           ///< 天体指针
+
+
+/*! @} */
+
+AST_NAMESPACE_END
+
+
+#include "SolarSystem.hpp"

@@ -1,0 +1,74 @@
+﻿/// @file      SSEParser.hpp
+/// @brief     SSE (Server-Sent Events) 解析器 — 内部实现，供测试使用
+/// @details   实现 NetworkStreamReceiver，将原始字节流解析为 SSE 事件。
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-06-14
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/NetworkStreamReceiver.hpp"
+#include "AstUtil/JsonValue.hpp"
+#include "AstAI/ChatEventHandler.hpp"
+#include <map>
+#include <string>
+
+AST_NAMESPACE_BEGIN
+
+
+/// @brief SSE 增量解析器（内部组件）
+/// @details 累积原始字节 → 按 \n\n 分割 SSE 事件 → 解析 data: 行 → 分派到 ChatEventHandler
+///          流式完成后调用 buildResult() 重建非流式格式的完整 JSON 响应
+class AST_AI_API SSEParser : public NetworkStreamReceiver
+{
+public:
+    explicit SSEParser(ChatEventHandler& handler);
+
+    // ── NetworkStreamReceiver 接口 ──
+
+    errc_t onHeaders(int statusCode, const std::map<std::string, std::string>& headers) override;
+    errc_t onData(const char* data, size_t size) override;
+    void onComplete() override;
+    void onError(errc_t error) override;
+
+    // ── 状态 ──
+
+    /// @brief 是否发生了错误（HTTP 非 200 或网络错误）
+    bool hasError() const { return !error_.empty(); }
+
+    /// @brief 获取错误描述
+    const std::string& errorMessage() const { return error_; }
+
+    // ── 累积结果 ──
+
+    /// @brief 将累积的 SSE deltas 重建为非流式 /chat/completions 格式的 JSON 响应
+    JsonValue buildResult() const;
+
+private:
+    struct AccumulatedToolCall
+    {
+        std::string id{};
+        std::string type{};
+        std::string functionName{};
+        std::string functionArguments{};
+    };
+
+    void processBuffer();
+    void processEvent(const std::string& event);
+    void processToolCallDeltas(const JsonValue& toolCalls);
+
+    ChatEventHandler& handler_;
+    bool thoughtCompleted_{false};   // 是否已完成推理/思考内容
+    std::string       buffer_{};
+    std::string       error_{};
+
+    std::string id_{};
+    std::string model_{};
+    std::string accumulatedContent_{};
+    std::string accumulatedReasoning_{};
+    std::string finishReason_{};
+    std::map<int, AccumulatedToolCall> toolCallsByIndex_{};
+};
+
+
+AST_NAMESPACE_END

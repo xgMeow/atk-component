@@ -1,0 +1,93 @@
+﻿/// @file      BlockKeyValueParser.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-01-08
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstUtil/StringView.hpp"
+#include "AstUtil/BKVItemView.hpp"
+#include "AstUtil/BaseParser.hpp"
+#include <cstdio>
+#include <vector>
+
+#include <fstream>
+
+AST_NAMESPACE_BEGIN
+
+class BKVSax;
+class BKVItemView;
+class ValueView;
+
+/// @brief 键值对解析器（BlockKeyValueParser）
+/// @details 
+/// 本类实现了键值对解析器，用于解析键值对格式的文本。
+/// 该类可以用于解析STK的配置文件，例如对象配置文件、数据文件等。
+/// 同时也可以用于解析[CelesTrak](https://celestrak.org/SpaceData/)网站上的一些数据文件。
+/// @ingroup ParseFormat
+class AST_UTIL_API BKVParser: public BaseParser
+{
+public:
+    enum EToken{
+        eBlockBegin,         ///< 块开始
+        eBlockEnd,           ///< 块结束
+        eKeyValue,           ///< 键值对
+        eError,              ///< 错误
+        eEOF=EOF,            ///< 文件结束
+    };
+
+    BKVParser();
+    explicit BKVParser(StringView filepath);
+    ~BKVParser();
+
+    /// @brief 设置是否允许注释
+    /// @details 设置是否允许解析注释行。
+    /// @param allow 是否允许注释
+    void setAllowComment(bool allow){ allowComment_ = allow; }
+
+    /// @brief 是否允许注释
+    /// @details 是否允许解析注释行。
+    /// @return 是否允许注释
+    bool allowComment() const { return allowComment_; }
+
+    /// @brief 获取下一个键值对项
+    /// @details 获取下一个键值对项，将键值对项的键和值存储在指定的视图中。
+    /// @param key 键视图，用于存储键值对项的键。
+    /// @param value 值视图，用于存储键值对项的值。
+    /// @return 键值对项的类型（EToken）。
+    EToken getNext(StringView& key, ValueView& value);
+
+    /// @brief 获取下一个键值对项
+    /// @details 获取下一个键值对项，将键值对项的键和值存储在指定的视图中。
+    /// @param item 键值对项视图，用于存储键值对项的键和值。
+    /// @return 键值对项的类型（EToken）。
+    EToken getNext(BKVItemView& item);
+
+    /// @brief 获取当前行（跳过注释行）
+    /// @details 获取当前行的内容，不包含行结束符。
+    /// @return 当前行的内容（去除首尾空格）
+    StringView getLineSkipComment(){return getLineSkipHashComment();}
+
+    /// @brief 解析文件
+    /// @details 解析指定路径的文件，将解析结果传递给指定的 sax 解析器。
+    /// @param filepath 文件路径视图，指定要解析的文件路径。
+    /// @param sax sax 解析器，用于处理解析结果。
+    /// @return 解析错误码（errc_t）。
+    errc_t parseFile(StringView filepath, BKVSax& sax);
+
+    /// @brief 解析当前打开的文件
+    /// @details 解析当前打开的文件，将解析结果传递给指定的 sax 解析器。
+    /// @param sax sax 解析器，用于处理解析结果。
+    /// @return 解析错误码（errc_t）。
+    errc_t parse(BKVSax& sax);
+
+protected:
+    bool              allowComment_;             ///< 是否允许注释行
+    std::vector<char> keyBuffer_;                ///< 内存缓冲区 for key
+    std::vector<char> valueBuffer_;              ///< 内存缓冲区 for value
+};
+
+
+AST_NAMESPACE_END

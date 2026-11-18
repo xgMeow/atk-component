@@ -1,0 +1,109 @@
+﻿/// @file      SymbolScope.hpp
+/// @brief     ~
+/// @details   ~
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2025-12-23
+
+#pragma once
+
+#include "AstGlobal.h"
+#include <unordered_map>
+#include <string>
+#include <vector>
+#include "AstUtil/SharedPtr.hpp"
+#include "AstScript/Expr.hpp"
+
+AST_NAMESPACE_BEGIN
+
+
+
+class AST_SCRIPT_API ISymbolScope
+{
+public:
+    virtual ~ISymbolScope() = default;
+
+    /// @brief 添加符号到符号作用域
+    /// @param name 符号名称
+    /// @param expr 符号对应的表达式
+    /// @return 错误码
+    virtual errc_t addSymbol(StringView name, Expr* expr) = 0;
+
+    /// @brief 查找符号作用域中的符号
+    /// @param name 符号名称
+    /// @param searchParent 是否向上查找父符号作用域
+    /// @return 符号对应的表达式，如果不存在则返回nullptr
+    virtual Expr* findSymbol(StringView name, bool searchParent = true) const = 0;
+
+    /// @brief 解析符号作用域中的符号，如果不存在则创建一个新的变量
+    /// @param name 符号名称
+    /// @return 符号对应的表达式指针
+    virtual Expr* resolveSymbol(StringView name) = 0;
+};
+
+
+/// @brief     符号作用域
+/// @details   
+/// 符号作用域用于存储符号(@ref Symbol )与变量(@ref Variable)、函数(@ref Function)等的映射关系。
+/// @ingroup Script
+class AST_SCRIPT_API SymbolScope: public ISymbolScope{
+public:
+    using SymbolMap = std::unordered_map<std::string, SharedPtr<Expr>>;
+    using SymbolPair = std::pair<std::string, SharedPtr<Expr>>;
+    using SymbolList = std::vector<SymbolPair>;
+
+    /// @brief 默认构造函数
+    SymbolScope() = default;
+
+    SymbolScope(const SymbolScope&) = delete;
+    SymbolScope& operator=(const SymbolScope&) = delete;
+
+    /// @brief 构造函数，指定父符号作用域
+    /// @param parent 父符号作用域指针
+    explicit SymbolScope(SymbolScope* parent)
+        : parent_(parent)
+    {}
+
+    ~SymbolScope() = default;
+
+public:
+    errc_t addSymbol(StringView name, Expr* expr) override;
+
+    Expr* findSymbol(StringView name, bool searchParent = true) const override;
+
+    Expr* resolveSymbol(StringView name) override;
+
+public:
+    /// @brief 添加或更新符号
+    /// @param name 符号名称
+    /// @param expr 符号对应的表达式
+    void setSymbol(StringView name, Expr* expr);
+
+    /// @brief 删除符号
+    /// @param name 符号名称
+    /// @return 是否删除成功
+    errc_t removeSymbol(StringView name);
+
+    /// @brief 检查符号是否存在
+    /// @param name 符号名称
+    /// @param searchParent 是否向上查找父符号表
+    /// @return 符号是否存在
+    bool hasSymbol(StringView name, bool searchParent = true) const;
+
+    /// @brief 获取当前符号表中的所有符号
+    /// @return 符号列表
+    SymbolList getSymbols() const;
+
+    /// @brief 获取父符号作用域
+    /// @return 父符号作用域指针
+    SymbolScope* parent() const;
+
+    /// @brief 设置父符号作用域
+    /// @param parent 父符号作用域指针
+    void setParent(SymbolScope* parent);
+
+protected:
+    SymbolMap    symbols_{};             ///< 符号作用域中的符号
+    SymbolScope* parent_ = nullptr;     ///< 父符号作用域指针
+};
+
+AST_NAMESPACE_END

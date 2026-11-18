@@ -1,0 +1,151 @@
+﻿/// @file      MotionSimpleAscent.hpp
+/// @brief     简单上升运动
+/// @details   简单上升运动用于模拟运载火箭的上升阶段运动
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-04-10
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstCore/Time.hpp"
+#include "AstCore/Object.hpp"
+#include "AstCore/GeodeticPoint.hpp"
+#include "AstCore/CelestialBody.hpp"
+#include "AstSim/MotionProfile.hpp"
+#include "AstSim/MotionWithIntervalStep.hpp"
+
+
+AST_NAMESPACE_BEGIN
+
+/*!
+    @addtogroup 
+    @{
+*/
+
+/// @brief 简单上升运动模型，用于模拟运载火箭的上升阶段运动
+/// @details
+/// @see MotionProfile
+class AST_SIM_API MotionSimpleAscent: public MotionProfile
+{
+public:
+    AST_OBJECT(MotionSimpleAscent)
+    static MotionSimpleAscent* New();
+    MotionSimpleAscent();
+    ~MotionSimpleAscent() override = default;
+
+    /// @brief 生成特定星历
+    /// @param eph 星历指针
+    /// @return 错误码
+    errc_t makeEphemerisSpec(ScopedPtr<Ephemeris>& eph) const override;
+
+    /// @brief 生成简单星历
+    /// @param eph 星历指针
+    /// @return 错误码
+    errc_t makeEphemerisSimple(ScopedPtr<Ephemeris>& eph) const override;
+
+    /// @brief 接受访问者
+    /// @param visitor 访问者
+    void accept(MotionProfileVisitor& visitor) override;
+
+    /// @brief 获取天体
+    Body* getBody() const;
+
+    /// @brief 设置天体
+    void setBody(Body* body) { body_ = body; }
+
+    /// @brief 设置发射时间
+    /// @param time 发射时间
+    void setLaunchTime(const TimePoint& time) { launchTime_ = time; }
+
+    /// @brief 获取发射时间
+    /// @return 发射时间
+    const TimePoint& getLaunchTime() const { return launchTime_; }
+
+    /// @brief 设置是否使用场景时间
+    /// @param useScenTime 是否使用场景时间
+    void setUseScenTime(bool useScenTime) { useScenTime_ = useScenTime; }
+
+    /// @brief 获取是否使用场景时间
+    /// @return 是否使用场景时间
+    bool getUseScenTime() const { return useScenTime_; }
+
+    /// @brief 设置关机时间
+    /// @param time 关机时间
+    void setBurnoutTime(const TimePoint& time) { burnoutTime_ = time; }
+
+    /// @brief 获取关机时间
+    /// @return 关机时间
+    const TimePoint& getBurnoutTime() const { return burnoutTime_; }
+
+    /// @brief 设置发射位置
+    /// @param latitude 纬度（度）
+    /// @param longitude 经度（度）
+    /// @param altitude 高度（米）
+    void setLaunchPosition(double latitude, double longitude, double altitude)
+    {
+        launchPosition_ = GeodeticPoint(latitude, longitude, altitude);
+    }
+
+    /// @brief 获取发射纬度
+    /// @return 发射纬度（度）
+    double getLaunchLatitude() const { return launchPosition_.latitude(); }
+
+    /// @brief 获取发射经度
+    /// @return 发射经度（度）
+    double getLaunchLongitude() const { return launchPosition_.longitude(); }
+
+    /// @brief 获取发射高度
+    /// @return 发射高度（米）
+    double getLaunchAltitude() const { return launchPosition_.altitude(); }
+
+    /// @brief 设置关机位置
+    /// @param latitude 纬度（度）
+    /// @param longitude 经度（度）
+    /// @param altitude 高度（米）
+    void setBurnoutPosition(double latitude, double longitude, double altitude)
+    {
+        this->burnoutPosition_ = GeodeticPoint(latitude, longitude, altitude);
+    }
+
+    /// @brief 获取关机纬度
+    /// @return 关机纬度（度）
+    double getBurnoutLatitude() const { return burnoutPosition_.latitude(); }
+
+    /// @brief 获取关机经度
+    /// @return 关机经度（度）
+    double getBurnoutLongitude() const { return burnoutPosition_.longitude(); }
+
+    /// @brief 获取关机高度
+    /// @return 关机高度（米）
+    double getBurnoutAltitude() const { return burnoutPosition_.altitude(); }
+
+    /// @brief 设置关机速度
+    /// @param velocity 关机速度（米/秒）
+    void setBurnoutVelocity(double velocity) { burnoutVelocity_ = velocity; }
+
+    /// @brief 获取关机速度
+    /// @return 关机速度（米/秒）
+    double getBurnoutVelocity() const { return burnoutVelocity_; }
+
+    /// @brief 设置时间粒度
+    /// @param granularity 时间粒度（秒）
+    void setGranularity(double granularity) { granularity_ = granularity; }
+
+    /// @brief 获取时间粒度
+    /// @return 时间粒度（秒）
+    double getGranularity() const { return granularity_; }
+
+private:
+    TimePoint launchTime_{};          ///< 发射时间
+    bool useScenTime_{};              ///< 是否使用场景时间
+    TimePoint burnoutTime_{};         ///< 关机时间
+    WeakPtr<CelestialBody> body_{};   ///< 天体
+    GeodeticPoint launchPosition_{};  ///< 发射位置
+    GeodeticPoint burnoutPosition_{}; ///< 关机位置
+    double burnoutVelocity_{};        ///< 关机速度（米/秒）
+    double granularity_{};            ///< 时间粒度（秒）
+};
+
+/*! @} */
+
+AST_NAMESPACE_END

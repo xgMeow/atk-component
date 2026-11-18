@@ -1,0 +1,76 @@
+﻿/// @file      ShooterControl.hpp
+/// @brief     
+/// @details   
+/// @author    金柯<jinke18@foxmail.com>
+/// @date      2026-04-28
+
+#pragma once
+
+#include "AstGlobal.h"
+#include "AstScript/Expr.hpp"
+#include "AstUtil/Object.hpp"
+#include "AstUtil/ObjectNamed.hpp"
+#include <string>
+
+AST_NAMESPACE_BEGIN
+
+/// @brief 控制变量，用于定义微分修正中的控制变量
+class AST_CORE_API ShooterControl : public ObjectNamed
+{
+public:
+    AST_OBJECT(ShooterControl)
+    AST_PROPERT(active)
+    AST_PROPERT(correction)
+    AST_PROPERT(maxStep)
+    AST_PROPERT(perturbation)
+    AST_PROPERT(scale)
+    AST_PROPERT(tolerance)
+    AST_PROPERT(totalCorrection)
+    AST_PROPERT(expr)
+    static ShooterControl* New();
+
+    ShooterControl() = default;
+    ~ShooterControl() override = default;
+
+PROPERTIES:
+    bool active() const { return active_; }
+    void setActive(bool active) { active_ = active; }
+
+    double correction() const { return correction_; }
+    void setCorrection(double correction) { correction_ = correction; }
+
+    double maxStep() const { return maxStep_; }
+    void setMaxStep(double maxStep) { maxStep_ = maxStep; }
+
+    double perturbation() const { return perturbation_; }
+    void setPerturbation(double perturbation) { perturbation_ = perturbation; }
+
+    double scale() const { return scale_; }
+    void setScale(double scale) { scale_ = scale; }
+
+    double tolerance() const { return tolerance_; }
+    void setTolerance(double tolerance) { tolerance_ = tolerance; }
+
+    double totalCorrection() const { return totalCorrection_; }
+    void setTotalCorrection(double totalCorrection) { totalCorrection_ = totalCorrection; }
+
+    Expr* expr() const { return expr_.get(); }
+    void setExpr(Expr* expr) { expr_ = expr; }
+public:
+    /// @brief 设置变量的值
+    errc_t setValue(double value) const;
+
+    /// @brief 获取变量的值
+    errc_t getValue(double& value) const;
+private:
+    bool active_{true};             ///< 是否激活
+    WeakPtr<Expr> expr_{};            ///< 表达式
+    double correction_{0.0};        ///< 修正值
+    double maxStep_{100.0};         ///< 最大步长
+    double perturbation_{0.1};      ///< 扰动值
+    double scale_{1.0};             ///< 缩放因子
+    double tolerance_{1e-6};        ///< 容差
+    double totalCorrection_{0.0};   ///< 总修正值??
+};
+
+AST_NAMESPACE_END
