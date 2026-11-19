@@ -36,13 +36,7 @@
          大标题和引导语就是靠它们（visible="no" 只影响导航，不影响页面本身）。
          usergroup 的 url 用相对路径而不是 @ref：topics.html 是生成器输出的列表页，
          没有可引用的话题标签名。 -->
-    <tab type="topics" visible="no" title="按功能" intro="按对象、工具、机动规划、可视化四类查看接口。"/>
-    <tab type="usergroup" title="按功能" url="topics.html">
-      <tab type="user" url="@ref by_object" title="对象"/>
-      <tab type="user" url="@ref by_tool" title="工具"/>
-      <tab type="user" url="@ref by_maneuver" title="机动规划"/>
-      <tab type="user" url="@ref by_vis" title="可视化"/>
-    </tab>
+    <tab type="topics" visible="yes" title="按功能" intro="按对象、工具、机动规划、可视化四类查看接口。"/>
 
     <!-- C++20 模块（module）相关 tab -->
     <tab type="modules" visible="no" title="" intro="">
