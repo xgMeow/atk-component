@@ -83,7 +83,6 @@ EXCLUDE                = include/ast \
                          include/AstUtil \
                          include/AstVisualization \
                          include/AstWeather \
-                         include/Satellite/Astromaster \
                          include/AstCompiler.h \
                          include/AstConfig.h \
                          include/AstGlobal.h
