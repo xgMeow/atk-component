@@ -387,6 +387,6 @@ Octave 的 Java 接口只支持对象方法用点号调用，静态成员、构�
 1. 实测通过的 Octave 版本号（含 JVM 位数），补到「二、运行环境」；
 2. `GetAllDeps` 是否有 Octave 专用参数（步骤 1 的待确认处）；
 3. `SetCallCodeType` 的取值：封装包只区分既定语言时用 `"MATLAB"`；
-4. 图片：`octave-intro-1.png`、`octave-impl-1.png`、`octave-result-1.png`、`octave-result-2.png`、`octave-result-3.png` 尚未提供，需放入 `docs\操作流程\media`；
+4. 图片：`octave-intro-1.png`、`octave-impl-1.png`、`octave-result-1.png`、`octave-result-2.png`、`octave-result-3.png` 尚未提供，需放入 `src\docs\操作流程\media`；
 5. 若 ATK 的案例目录中已提供 Octave 版本脚本，以实际脚本替换「案例源码」；
 6. `ATKLibraryLoader` 的类名与 `loadLibrary` 方法名按 jar 实际内容核对（对应 MATLAB 案例中 `initATK.m` 的加载步骤）。

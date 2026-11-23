@@ -29,7 +29,7 @@
       <tab type="user" url="@ref component_flow_octave" title="Octave"/>
     </tab>
 
-    <!-- topics tab 承载 \defgroup 定义的组（docs/groups.dox）；title 语言包默认为
+    <!-- topics tab 承载 \defgroup 定义的组（src/docs/groups.dox）；title 语言包默认为
          「专题」，intro 默认为「这里是所有专题及其简介:」。
          和「操作流程」同一套做法：topics tab 关掉，改由 usergroup 承载，左侧树才会把
          四个组缩进挂在父项下。关掉的 tab 仍保留 title / intro —— topics.html 的

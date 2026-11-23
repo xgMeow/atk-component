@@ -1,16 +1,17 @@
-# tools/doxygen
+# doxygen-theme
 
-`Doxyfile` 引用的 Doxygen HTML 定制文件，集中放这里：
+`Doxyfile` 引用的 Doxygen 输出定制文件，按职责分目录：`templates/`（模板与布局）、
+`skin/`（皮肤）、`patches/`（在生成器输出的 DOM 上补行为的脚本）、`media/`（图片）。
 
-| 文件 | Doxyfile 选项 | 用途 |
+| 路径 | Doxyfile 选项 | 用途 |
 | --- | --- | --- |
-| `layout.xml` | `LAYOUT_FILE` | 导航栏 tab 的顺序 / 显隐 / 标题 |
-| `header.html` | `HTML_HEADER` | 页头，标题栏区已改写为自有标记 |
-| `style.css` | `HTML_EXTRA_STYLESHEET` | 站点皮肤 |
-| `nav-row-click.js` | `HTML_EXTRA_FILES` | 左树整行可点（行内空白区点击转发给文字链接） |
-| `nav-sync-dock.js` | `HTML_EXTRA_FILES` | 「面板同步」开关从左树挪到导航栏、钉在搜索框左边（悬停/聚焦出说明气泡） |
-| `mermaid-lazy.js` | `HTML_EXTRA_FILES` | Mermaid 按需加载：页面里真有 `.mermaid` 才去 CDN 取（替代 Doxygen 默认的模块脚本） |
-| `logo.png` | `PROJECT_LOGO` | 标题栏 logo（白字版，取自 atk-doc 的 `logoDark.png`） |
+| `templates/layout.xml` | `LAYOUT_FILE` | 导航栏 tab 的顺序 / 显隐 / 标题 |
+| `templates/header.html` | `HTML_HEADER` | 页头，标题栏区已改写为自有标记 |
+| `skin/style.css` | `HTML_EXTRA_STYLESHEET` | 站点皮肤 |
+| `patches/nav-row-click.js` | `HTML_EXTRA_FILES` | 左树整行可点（行内空白区点击转发给文字链接） |
+| `patches/nav-sync-dock.js` | `HTML_EXTRA_FILES` | 「面板同步」开关从左树挪到导航栏、钉在搜索框左边（悬停/聚焦出说明气泡） |
+| `patches/mermaid-lazy.js` | `HTML_EXTRA_FILES` | Mermaid 按需加载：页面里真有 `.mermaid` 才去 CDN 取（替代 Doxygen 默认的模块脚本） |
+| `media/logo.png` | `PROJECT_LOGO` | 标题栏 logo（白字版，取自 atk-doc 的 `logoDark.png`） |
 
 页脚（`HTML_FOOTER`）**没有启用**：目前页脚没有自定义内容，放一个和官方模板一模一样的
 文件等于凭空多一个“升级 Doxygen 时要同步”的负担。以后要加访问量统计之类的东西再放。
@@ -62,7 +63,7 @@
 全部标 `visible="no"`——因为 layout.xml 里显式写 `yes` 会让 Doxygen 连**空 tab** 也渲染
 出来。以后新增了对应内容再把对应项改回 `yes`。
 
-`简介` tab（`type="mainpage"`）对应 `docs/mainpage.dox` 的 `\mainpage` 标题；左侧树里
+`简介` tab（`type="mainpage"`）对应 `src/docs/mainpage.dox` 的 `\mainpage` 标题；左侧树里
 这一条显示的是 `\mainpage` 的标题，不是 tab 的 `title`，改名字两处都要动。
 
 `操作流程` tab 不是内置类型，而是 `type="usergroup"`（父项）+ 四个 `type="user"`（子项）：
@@ -73,7 +74,7 @@
 
 `按功能` tab 用同一套做法：`topics` tab 标 `visible="no"`（`title` / `intro` 仍要保留，
 `topics.html` 的大标题和引导语靠它们），再由 `usergroup url="topics.html"` + 四个 `user`
-子项承载——对象 / 工具 / 机动规划 / 可视化，分别指向 `docs/groups.dox` 里的 `\defgroup`，
+子项承载——对象 / 工具 / 机动规划 / 可视化，分别指向 `src/docs/groups.dox` 里的 `\defgroup`，
 类的归属靠头文件里的 `\ingroup`。这里 `url` 写相对路径而不是 `@ref`：`topics.html` 是
 生成器输出的列表页，没有可引用的标签名（`@ref by_object` 这类只能指到组页）。
 
@@ -179,7 +180,7 @@ Doxygen 默认的链接色是藏青 `#3D578C`，在白色正文里偏暗偏灰�
 
 ### Markdown 表格（配色）
 
-`docs/` 里用 `|` 写的表（目前只有首页「按主题查接口」那张）由 Doxygen 渲染成
+`src/docs/` 里用 `|` 写的表（目前只有首页「按主题查接口」那张）由 Doxygen 渲染成
 `table.markdownTable`，默认配色是 Doxygen 自带的藏青：单元格描边 `#2D4068`、表头
 `#374F7F` 底 + 白字。整页其余部分是白底 + 中性浅灰，这块深色是页面上唯一的重色，
 和白色导航栏、左侧树、成员函数表摆在一起像贴进来的一张别处的图。
@@ -203,7 +204,7 @@ Doxygen 默认的链接色是藏青 `#3D578C`，在白色正文里偏暗偏灰�
 
 ### 文档插图（`\image`）
 
-`docs/` 下的页面用 `\image html <文件名> "说明"` 插图，Doxygen 按原始像素输出、不给宽度，
+`src/docs/` 下的页面用 `\image html <文件名> "说明"` 插图，Doxygen 按原始像素输出、不给宽度，
 所以 `style.css` 末尾补了 `.image img { max-width: 100%; height: auto; }`，窗口变窄时等比缩小。
 图片由 Doxygen **扁平复制**到 HTML 根目录，文件名在整个文档范围内必须唯一，
 查找目录由 `Doxyfile` 的 `IMAGE_PATH` 指定。

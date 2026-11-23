@@ -5,7 +5,7 @@
  *   菜单栏  沿用其面包屑 .vp-breadcrumb 的白底细条 / 灰字 / 加粗强调
  *
  * 分两类写法，改之前先看清楚是哪一类：
- *   一、标题栏：结构由 tools/doxygen/header.html 自己写，样式只作用于我们自己的
+ *   一、标题栏：结构由 doxygen-theme/templates/header.html 自己写，样式只作用于我们自己的
  *       .atk-* 类名，不去碰 Doxygen 的默认类（升级 Doxygen 时更不容易坏）。
  *   二、菜单栏及其后：那段 DOM 是 Doxygen 生成器硬编码输出的（#main-nav、
  *       </div><!-- top -->、#side-nav、#container…），模板够不到，只能覆盖
@@ -101,7 +101,7 @@ table.memberdecls tr[class^='memdesc'] {
   border-color: #e5e8ed;
 }
 
-/* ---------- Markdown 表格（docs/ 里用 | 写的表）：只调颜色 ---------- */
+/* ---------- Markdown 表格（src/docs/ 里用 | 写的表）：只调颜色 ---------- */
 /* Doxygen 给这套表用的是它自带的藏青配色：单元格描边 #2D4068、表头 #374F7F 底 + 白字。
    整页其余部分是白底 + 中性浅灰，这一块深色是页面上唯一的重色，和白色导航栏、
    左侧树、成员表都不是一套。这里只换颜色：描边取成员表同一档 #e5e8ed；表头底色取

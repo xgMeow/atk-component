@@ -14,8 +14,8 @@ PROJECT_NAME           = "Aerospace Tool Kit（Component）"
 # 项目简短说明，显示在首页标题下方
 # PROJECT_BRIEF          = "ATK 二次开发 component 模式接口参考（IntegratingWithATK/component/include/）"
 # 标题栏左侧的 logo（深色渐变底用白色版，取自 atk-doc 的 logoDark.png），
-# 尺寸与留白在 tools/doxygen/style.css 的 .atk-brand-logo 里控制
-PROJECT_LOGO           = tools/doxygen/logo.png
+# 尺寸与留白在 doxygen-theme/skin/style.css 的 .atk-brand-logo 里控制
+PROJECT_LOGO           = doxygen-theme/media/logo.png
 # 所有生成物的根输出目录（相对当前工作目录）
 OUTPUT_DIRECTORY       = .dist/atk-component-doc
 # 生成文档的界面语言
@@ -31,9 +31,9 @@ NUM_PROC_THREADS       = 0
 
 # ---------- 输入 ----------
 # 扫描的输入目录：
-#   include  接口头文件
-#   docs     文档源文件（自定义的文档）
-INPUT = include docs
+#   src/include  接口头文件
+#   src/docs     文档源文件（自定义的文档）
+INPUT = src/include src/docs
 # 参与解析的文件后缀模式（不包含 .inl）
 # .md 是二次开发操作流程页面的载体，每个文件用 \page 声明一页
 FILE_PATTERNS          = *.h *.hpp *.dox *.md
@@ -42,50 +42,50 @@ RECURSIVE              = YES
 # 源文件读取编码
 INPUT_ENCODING         = UTF-8
 # #include 指令的查找路径（让类型引用能被解析）
-INCLUDE_PATH           = include
+INCLUDE_PATH           = src/include
 # 文档中显示文件完整路径
 FULL_PATH_NAMES        = NO
 # 显示文件路径时去掉的前缀，使路径更短
-STRIP_FROM_PATH        = include
+STRIP_FROM_PATH        = src/include
 
 # ---------- 图片 ----------
 # 文档页面里 \image 引用的图片查找目录。Doxygen 会把被引用的图片扁平复制到 HTML
 # 输出根目录，所以图片文件名必须在整个文档范围内唯一，否则同名文件会互相覆盖。
-IMAGE_PATH             = docs/操作流程/media
+IMAGE_PATH             = src/docs/操作流程/media
 
 # ---------- 排除目录：ast 相关 ----------
 # 路径相对"运行 doxygen 的目录"（仓库根），用正斜杠。
-EXCLUDE                = include/ast \
-                         include/AstAI \
-                         include/AstAnalyzer \
-                         include/AstCalc \
-                         include/AstChart \
-                         include/AstCmd \
-                         include/AstCore \
-                         include/AstDataUpdate \
-                         include/AstEngine \
-                         include/AstFault \
-                         include/AstLoader \
-                         include/AstMath \
-                         include/AstMock \
-                         include/AstOpt \
-                         include/AstPlot \
-                         include/AstReport \
-                         include/AstScript \
-                         include/AstSim \
-                         include/AstSPICE \
-                         include/AstTest \
-                         include/AstUiAI \
-                         include/AstUiCore \
-                         include/AstUiDataUpdate \
-                         include/AstUiPilot \
-                         include/AstUiUtil \
-                         include/AstUtil \
-                         include/AstVisualization \
-                         include/AstWeather \
-                         include/AstCompiler.h \
-                         include/AstConfig.h \
-                         include/AstGlobal.h
+EXCLUDE                = src/include/ast \
+                         src/include/AstAI \
+                         src/include/AstAnalyzer \
+                         src/include/AstCalc \
+                         src/include/AstChart \
+                         src/include/AstCmd \
+                         src/include/AstCore \
+                         src/include/AstDataUpdate \
+                         src/include/AstEngine \
+                         src/include/AstFault \
+                         src/include/AstLoader \
+                         src/include/AstMath \
+                         src/include/AstMock \
+                         src/include/AstOpt \
+                         src/include/AstPlot \
+                         src/include/AstReport \
+                         src/include/AstScript \
+                         src/include/AstSim \
+                         src/include/AstSPICE \
+                         src/include/AstTest \
+                         src/include/AstUiAI \
+                         src/include/AstUiCore \
+                         src/include/AstUiDataUpdate \
+                         src/include/AstUiPilot \
+                         src/include/AstUiUtil \
+                         src/include/AstUtil \
+                         src/include/AstVisualization \
+                         src/include/AstWeather \
+                         src/include/AstCompiler.h \
+                         src/include/AstConfig.h \
+                         src/include/AstGlobal.h
 
 # ============================================================================
 # 提取范围与显示策略
@@ -114,18 +114,18 @@ HIDE_SCOPE_NAMES       = YES
 # INLINE_INHERITED_MEMB  = YES
 # 控制是否隐藏 Doxygen 页面标题末尾附加的 “Compound Reference”（复合参考）字样
 HIDE_COMPOUND_REFERENCE = YES
-# ---------- 页面外观定制（统一放在 tools/doxygen/，各项说明见该目录 README.md） ----------
+# ---------- 页面外观定制（统一放在 doxygen-theme/，各项说明见该目录 README.md） ----------
 # 导航栏 tab 的顺序 / 显隐 / 标题
-LAYOUT_FILE            = tools/doxygen/layout.xml
+LAYOUT_FILE            = doxygen-theme/templates/layout.xml
 # 自定义页头：Doxygen 1.17.0 官方模板，仅改写标题栏区块为自有标记
-HTML_HEADER            = tools/doxygen/header.html
+HTML_HEADER            = doxygen-theme/templates/header.html
 # 自定义样式表：站点皮肤（已并入原先单独的 doxy_strip_tags 规则）
-HTML_EXTRA_STYLESHEET  = tools/doxygen/style.css
+HTML_EXTRA_STYLESHEET  = doxygen-theme/skin/style.css
 # 额外脚本：左树整行可点（Doxygen 只把条目文字包在 <a> 里，行内空白区原本点不动）、
 # 面板同步开关挪进导航栏、Mermaid 按需加载（原占位符是模块脚本，会阻塞 DOMContentLoaded）
-HTML_EXTRA_FILES       = tools/doxygen/nav-row-click.js \
-                         tools/doxygen/nav-sync-dock.js \
-                         tools/doxygen/mermaid-lazy.js
+HTML_EXTRA_FILES       = doxygen-theme/patches/nav-row-click.js \
+                         doxygen-theme/patches/nav-sync-dock.js \
+                         doxygen-theme/patches/mermaid-lazy.js
 
 # ============================================================================
 # 注释解析
@@ -276,7 +276,7 @@ SEARCH_INCLUDES        = YES
 SKIP_FUNCTION_MACROS   = YES
 
 # 预定义宏：相当于命令行 -D。
-# 只保留 include/ 下非 ast 前缀目录里真正用到的宏：
+# 只保留 src/include/ 下非 ast 前缀目录里真正用到的宏：
 #   IATKOBJECT_API        428 处类声明
 #   A_* 属性宏            见下方，合计约 40 处
 #   protected=private     让 protected 段降级为 private，配合 EXTRACT_PRIVATE=NO 隐藏

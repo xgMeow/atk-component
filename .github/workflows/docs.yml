@@ -29,7 +29,7 @@
 #   流水线里有个「预检 Pages 是否已启用」步骤，没开时会在 Actions 里打 warning。
 #
 # 改之前务必看懂的三个坑：
-#   * Doxygen 版本锁死 1.17.0。tools/doxygen/ 下的 header.html / layout.xml /
+#   * Doxygen 版本锁死 1.17.0。doxygen-theme/ 下的 header.html / layout.xml /
 #     style.css 是照 1.17.0 的官方模板改的，换成 apt 里的 1.9.x 页面结构会坏。
 #   * Doxyfile 里的 DOT_PATH 是 Windows 本地路径（C:/Program Files/Graphviz/bin），
 #     在 Linux runner 上会让 655 张类图静默消失、构建却仍然成功。下面的「生成文档」

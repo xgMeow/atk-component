@@ -8,7 +8,7 @@
      除第 3 条外一律未动。注意：不要在模板注释里写出占位符本身（带 $ 前缀的那个词），
      Doxygen 会把注释里的占位符也一并替换，替换结果会跑到 <!DOCTYPE> 之前，
      导致页面进入怪异模式。
-     升级 Doxygen 后请按 tools/doxygen/README.md 重新生成再移植这几块。 -->
+     升级 Doxygen 后请按 doxygen-theme/README.md 重新生成再移植这几块。 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "https://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="$langISO">
 <head>
@@ -70,9 +70,9 @@ $darkmode
 <script type="text/javascript" src="$relpath^mermaid-lazy.js"></script>
 <link href="$relpath^$stylesheet" rel="stylesheet" type="text/css" />
 $extrastylesheet
-<!-- 左树整行可点：Doxygen 只把文字包在 <a> 里，行内空白区原本点不动（见 tools/doxygen/README.md） -->
+<!-- 左树整行可点：Doxygen 只把文字包在 <a> 里，行内空白区原本点不动（见 doxygen-theme/README.md） -->
 <script type="text/javascript" src="$relpath^nav-row-click.js"></script>
-<!-- 面板同步开关挪到导航栏、钉在搜索框左边（见 tools/doxygen/README.md） -->
+<!-- 面板同步开关挪到导航栏、钉在搜索框左边（见 doxygen-theme/README.md） -->
 <script type="text/javascript" src="$relpath^nav-sync-dock.js"></script>
 </head>
 <body>
