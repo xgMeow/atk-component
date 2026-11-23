@@ -1,0 +1,313 @@
+# ============================================================================
+# ATK Component 接口文档 —— 构建 + 双出口发布
+#
+# 一次构建，两个出口：
+#   1. GitHub Pages 站点     https://xgmeow.github.io/atk-component/
+#   2. GitHub Release 资产   tag: docs-latest  →  atk-component-doc.tar.gz
+#      （给「别的仓库的流水线」拉取用；公开仓库不需要任何 token）
+#
+# 下游仓库怎么拉（可直接抄，解包后是平铺的 index.html / search/ / *.png）：
+#
+#   - name: 拉取接口文档产物
+#     run: |
+#       set -euo pipefail
+#       curl -fL --retry 3 -o atk-component-doc.tar.gz \
+#         https://github.com/xgMeow/atk-component/releases/download/docs-latest/atk-component-doc.tar.gz
+#       mkdir -p docs
+#       tar -xzf atk-component-doc.tar.gz -C docs
+#
+#   # 产物里带 build-info.txt，可以据此核对是哪次提交构建的
+#   cat docs/build-info.txt
+#
+# 触发：push 到 master，或在 Actions 页面手动 Run workflow
+#
+# 前置条件（只需做一次，必须手动做）：
+#   Settings → Pages → Build and deployment → Source 选 "GitHub Actions"。
+#   这一步不能靠流水线自动完成：configure-pages 的 enablement 明确要求一个
+#   非 GITHUB_TOKEN 的 token（PAT / GitHub App），所以这里不掺和，改成人肉点一次。
+#   没开 Pages 时：Release 资产照常发布，只有「部署到 GitHub Pages」那一步会失败。
+#   流水线里有个「预检 Pages 是否已启用」步骤，没开时会在 Actions 里打 warning。
+#
+# 改之前务必看懂的三个坑：
+#   * Doxygen 版本锁死 1.17.0。tools/doxygen/ 下的 header.html / layout.xml /
+#     style.css 是照 1.17.0 的官方模板改的，换成 apt 里的 1.9.x 页面结构会坏。
+#   * Doxyfile 里的 DOT_PATH 是 Windows 本地路径（C:/Program Files/Graphviz/bin），
+#     在 Linux runner 上会让 655 张类图静默消失、构建却仍然成功。下面的「生成文档」
+#     步骤把 DOT_PATH 追加在配置末尾覆盖掉它，仓库里的 Doxyfile 保持原样不动。
+#   * 页面里的资源链接全是 Doxygen 生成的相对路径（header.html 用 $relpath^），
+#     所以部署到 /atk-component/ 这种子路径下也能正常打开，不需要改站点根。
+# ============================================================================
+
+
+
+# 整个工作流的名称
+name: 构建并发布接口文档
+
+# 定义触发条件——什么时候运行这个流水线
+on:
+  push:
+    branches:
+      - master
+  # 允许手动触发
+  workflow_dispatch:
+
+# GITHUB_TOKEN 默认只读，这里按需最小授权
+permissions:
+  contents: read
+
+# 并发控制配置
+concurrency:
+  # 给这组运行起一个组名，同组内的运行会受并发约束
+  group: pages
+  # 当同组已有运行在进行时，让新的排队等待
+  cancel-in-progress: false
+
+# 这是工作流的环境变量配置块，定义一组键值对，供后面 jobs / steps 中的脚本使用
+env:
+  # 指定要使用的 Doxygen 版本号（doxygen 版本不能随便升级）
+  DOXYGEN_VERSION: 1.17.0
+  # 对应 Doxygen 安装包/二进制文件的 SHA256 校验值，下载后校验文件完整性、防止被篡改或下载错误
+  # https://api.github.com/repos/doxygen/doxygen/releases/tags/Release_1_17_0
+  DOXYGEN_SHA256: 75419ef4f446fc1c24ef12514b574e66e898ee6f527c6ae2ad84f91a905823c2
+  # 生成的 HTML 文档输出目录（Doxygen 默认输出到 html 子目录，这里放在 .dist/... 下）
+  # 这里是 CI 产物路径的唯一定义处：构建时会把 DOC_HTML 反推成 OUTPUT_DIRECTORY +
+  # HTML_OUTPUT 追加到配置末尾覆盖 Doxyfile 里的同项，所以不会出现「改了 Doxyfile 忘了
+  # 改这里」的漂移。Doxyfile 里那份只管本地 Windows 构建。
+  DOC_HTML: .dist/atk-component-doc/html
+  # 下游仓库拉取用的资产名 / 滚动 tag
+  ASSET_NAME: atk-component-doc.tar.gz
+  # 发布时使用的 Release 标签名（docs-latest 表示"最新文档"，常配合覆盖式发布）
+  RELEASE_TAG: docs-latest
+
+# 定义工作流中的所有任务
+jobs:
+  # --------------------------------------------------------------------------
+  # job 的 ID 叫 build，后续可通过 needs: build 被其他 job 依赖
+  # 构建：生成文档 → 体检 → 打包 → 发 Release → 传 Pages 产物
+  # --------------------------------------------------------------------------
+  build:
+    # job 的显示名称，会展示在 Actions 界面中（比 ID 更易读）
+    name: 构建并发布产物
+    # 指定运行环境：GitHub 托管的最新版 Ubuntu 虚拟机
+    runs-on: ubuntu-latest
+    # 该 job 最长运行 30 分钟，超时自动终止（防止卡死消耗额度）
+    timeout-minutes: 30
+    # 这个 job 级别的权限（会覆盖工作流顶层的 permissions）
+    permissions:
+      # 发 Release 需要写；Pages 产物上传需要 pages 权限
+      contents: write
+      pages: write
+    # 定义这个 job 要依次执行的步骤列表
+    steps:
+      - name: 检出代码
+        # 把当前仓库的代码克隆（clone）到 runner 的工作目录里。
+        uses: actions/checkout@v7
+
+      - name: 安装 Graphviz
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq graphviz
+          dot -V
+
+      - name: 安装 Doxygen ${{ env.DOXYGEN_VERSION }}
+        run: |
+          set -euo pipefail
+
+          V="$DOXYGEN_VERSION"
+          # 官方 Release 的 tag 用下划线（Release_1_17_0），资产名用点号（1.17.0）
+          GH_URL="https://github.com/doxygen/doxygen/releases/download/Release_${V//./_}/doxygen-${V}.linux.bin.tar.gz"
+          SF_URL="https://sourceforge.net/projects/doxygen/files/rel-${V}/doxygen-${V}.linux.bin.tar.gz/download"
+
+          # 先走 GitHub 官方 Release，失败再退回 SourceForge 官方镜像
+          if ! curl -fL --retry 3 --retry-delay 5 --connect-timeout 20 -o /tmp/doxygen.tar.gz "$GH_URL"; then
+            echo "GitHub 下载失败，改用 SourceForge 镜像"
+            curl -fL --retry 3 --retry-delay 5 --connect-timeout 20 -o /tmp/doxygen.tar.gz "$SF_URL"
+          fi
+
+          # 校验内容，防止半截文件或镜像串版本
+          echo "${DOXYGEN_SHA256}  /tmp/doxygen.tar.gz" | sha256sum -c -
+
+          sudo mkdir -p /opt/doxygen
+          sudo tar -xzf /tmp/doxygen.tar.gz -C /opt/doxygen --strip-components=1
+          echo "/opt/doxygen/bin" >> "$GITHUB_PATH"
+
+          # 断言版本，避免哪天镜像换了内容却静默通过
+          /opt/doxygen/bin/doxygen --version
+          /opt/doxygen/bin/doxygen --version | grep -q "^${V} " || {
+            echo "::error::Doxygen 版本不是 ${V}"
+            exit 1
+          }
+
+      - name: 生成文档
+        run: |
+          set -euo pipefail
+
+          # 末尾追加的赋值会覆盖 Doxyfile 里的同项（Doxygen 配置「后写的赢」，列表型
+          # 标签则是整组替换）。doxygen - 表示从标准输入读配置，仓库里的 Doxyfile
+          # 一个字节不动，本地 Windows 构建不受影响。
+          #   * DOT_PATH：Doxyfile 里是 Windows 路径，不覆盖会让 655 张类图静默消失。
+          #   * OUTPUT_DIRECTORY / HTML_OUTPUT：由 DOC_HTML 反推，让 CI 产物目录只在
+          #     env 里定义一次，而不是和 Doxyfile 各存一份靠人肉同步。
+          {
+            cat Doxyfile
+            echo
+            echo "DOT_PATH = $(dirname "$(command -v dot)")"
+            echo "OUTPUT_DIRECTORY = ${DOC_HTML%/*}"
+            echo "HTML_OUTPUT = ${DOC_HTML##*/}"
+          } | doxygen -
+
+      - name: 产物体检
+        run: |
+          set -euo pipefail
+          HTML="$DOC_HTML"
+
+          test -s "$HTML/index.html" || { echo "::error::没有生成 index.html"; exit 1; }
+          test -d "$HTML/search" || { echo "::error::缺少 search 目录，SEARCHENGINE 未生效"; exit 1; }
+
+          # 类图数量是 dot 是否生效的唯一可靠信号：本地用 Graphviz 16.1.1 构建得到 655 张，
+          # 这里留出余量按 400 卡。
+          PNG_COUNT=$(find "$HTML" -maxdepth 1 -name '*.png' | wc -l)
+          echo "类图数量: $PNG_COUNT"
+          test "$PNG_COUNT" -ge 400 || {
+            echo "::error::类图只有 $PNG_COUNT 张，Graphviz/dot 没生效"
+            exit 1
+          }
+
+          echo "HTML 文件数: $(find "$HTML" -type f | wc -l)"
+          echo "HTML 体积: $(du -sh "$HTML" | cut -f1)"
+
+          # 告警只打印不拦截：本地基线 7 条，条数波动不该阻断发布
+          if [ -f .dist/doxygen-warnings.log ]; then
+            echo "Doxygen 告警 $(wc -l < .dist/doxygen-warnings.log) 条（本地基线 7 条）"
+            cat .dist/doxygen-warnings.log
+          fi
+
+      - name: 写入 .nojekyll 与构建信息
+        run: |
+          set -euo pipefail
+          HTML="$DOC_HTML"
+
+          # 走 Actions 源部署时 GitHub 不跑 Jekyll，这个文件其实用不上；
+          # 但产物也可能被下游拿去做分支部署/离线站，带上它可以避免以后踩坑。
+          : > "$HTML/.nojekyll"
+
+          # build-info.txt 会同时出现在站点和 tar.gz 里，下游可据此核对版本
+          {
+            echo "project=atk-component"
+            echo "commit=${GITHUB_SHA}"
+            echo "commit_short=${GITHUB_SHA::8}"
+            echo "ref=${GITHUB_REF_NAME}"
+            echo "run=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "doxygen=$(doxygen --version)"
+            echo "html_files=$(find "$HTML" -type f | wc -l)"
+          } > "$HTML/build-info.txt"
+          cat "$HTML/build-info.txt"
+
+      - name: 打包 tar.gz
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/dist"
+
+          # 从 html 目录里打包，解包后就是平铺的 index.html，下游不用再剥一层目录。
+          # --sort/--owner/--group 让同样内容打出来的包字节稳定，便于比对。
+          tar -czf "$RUNNER_TEMP/dist/$ASSET_NAME" \
+            --sort=name --owner=0 --group=0 --numeric-owner \
+            -C "$DOC_HTML" .
+
+          ls -l "$RUNNER_TEMP/dist/$ASSET_NAME"
+          echo "SHA256: $(sha256sum "$RUNNER_TEMP/dist/$ASSET_NAME" | cut -d' ' -f1)"
+
+      - name: 发布 Release 资产
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ASSET_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/$RELEASE_TAG/$ASSET_NAME"
+
+          # 用带引号的 heredoc 写说明，避免反引号和 $ 被 shell 展开
+          NOTES="$RUNNER_TEMP/release-notes.md"
+          cat > "$NOTES" <<'EOF'
+          由 GitHub Actions 自动构建，每次运行覆盖同一份资产。
+
+          ## 用途
+          给其他仓库的流水线拉取离线接口文档包（公开仓库，无需 token）：
+
+          ```bash
+          curl -fL --retry 3 -o atk-component-doc.tar.gz \
+            <资产地址>
+          ```
+
+          ## 内容
+          解包后为平铺结构：`index.html`、`search/`、`*.png`、`build-info.txt`。
+          `build-info.txt` 里记录构建所用的 commit / 时间 / Doxygen 版本，可据此核对新旧。
+          EOF
+          # 把占位符换成真实地址（前面用单引号 heredoc 就是为了不提前展开）
+          sed -i "s|<资产地址>|$ASSET_URL|" "$NOTES"
+
+          # 滚动 tag：第一次运行时创建，之后每次覆盖同名资产，URL 保持不变
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" \
+              --title "接口文档产物（滚动更新）" \
+              --notes-file "$NOTES" \
+              --latest=false
+          else
+            gh release edit "$RELEASE_TAG" --notes-file "$NOTES"
+          fi
+
+          gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/dist/$ASSET_NAME" --clobber
+          echo "资产地址: $ASSET_URL"
+
+      - name: 预检 Pages 是否已启用
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # 只做诊断，不拦构建：没开 Pages 时后面的「部署」才会失败，
+          # 但 Release 资产已经发布出去了（别的仓库拉包不受影响）。
+          if gh api "repos/${{ github.repository }}/pages" >/dev/null 2>&1; then
+            echo "Pages 已启用"
+          else
+            echo "::warning title=Pages 未启用::仓库 Settings → Pages → Build and deployment → Source 选 \"GitHub Actions\"，否则下一步部署会失败（Release 资产不受影响）"
+          fi
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ env.DOC_HTML }}
+          # v4 起默认排除点文件，这里要保留上面写入的 .nojekyll
+          include-hidden-files: true
+
+  # --------------------------------------------------------------------------
+  # 部署：把构建产物发到 GitHub Pages
+  # --------------------------------------------------------------------------
+  deploy:
+    name: 部署到 GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: 写入运行摘要
+        run: |
+          set -euo pipefail
+          {
+            echo "## 接口文档已发布"
+            echo ""
+            echo "| 出口 | 地址 |"
+            echo "| --- | --- |"
+            echo "| Pages 站点 | ${{ steps.deployment.outputs.page_url }} |"
+            echo "| Release 资产 | ${{ github.server_url }}/${{ github.repository }}/releases/download/${RELEASE_TAG}/${ASSET_NAME} |"
+            echo ""
+            echo "构建提交 \`${GITHUB_SHA::8}\`，产物里的 \`build-info.txt\` 记录了完整构建信息。"
+          } >> "$GITHUB_STEP_SUMMARY"
