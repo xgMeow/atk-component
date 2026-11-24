@@ -101,6 +101,47 @@ table.memberdecls tr[class^='memdesc'] {
   border-color: #e5e8ed;
 }
 
+/* ---------- 成员签名排版：还原成 C++ 的写法 ---------- */
+/* 成员详细说明里的签名条是一张单元格表：返回类型+函数名 / ( / 参数类型 / 参数名 / ) 各占一格。
+   单元格之间有 2px 的 border-spacing，没写内边距的格子还带 1px 浏览器默认 padding，
+   于是渲染成 `IAccessConstraint * AddConstraint ( EAccessConstraints eConstraint )`——
+   括号两边各空一格。这里只动几何、不动字号/颜色：
+     · border-spacing 归零、单元格内边距归零 → `(` `)` 紧贴；
+     · 参数类型和参数名之间那个空格改由 .paramname 的 padding-left 提供
+       （td 是 table-cell，margin 在表格布局里不生效，不能用 margin）。
+   汇总表的文本（`IAccessConstraint *` / `AddConstraint (`）由 signature-normalize.js
+   重排，不在这里处理。 */
+.memproto table.memname {
+  border-spacing: 0;
+}
+
+.memproto table.memname td {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.memproto table.memname td.paramname {
+  padding-left: .15em;
+}
+
+/* 汇总表两列之间靠返回类型末尾的 NBSP 分隔（signature-normalize.js 特意保留的）。
+   两列各带 1px 浏览器默认内边距，会把那个空格撑到 1.5 倍，去掉内侧的这两 1px，
+   列间距离正好等于一个空格。 */
+td.memItemLeft {
+  padding-right: 0;
+}
+
+td.memItemRight {
+  padding-left: 0;
+}
+
+/* 参数名后面的 `)` 前原来有 1px 空隙，来自 .paramname em 的 margin-right
+   （doxygen.css 给「参数名 = 默认值」留的）。参数名下没有默认值时把这个 1px 去掉，
+   `eConstraint)` 才贴得住。 */
+.memproto .paramname em:last-child {
+  margin-right: 0;
+}
+
 /* ---------- Markdown 表格（src/docs/ 里用 | 写的表）：只调颜色 ---------- */
 /* Doxygen 给这套表用的是它自带的藏青配色：单元格描边 #2D4068、表头 #374F7F 底 + 白字。
    整页其余部分是白底 + 中性浅灰，这一块深色是页面上唯一的重色，和白色导航栏、

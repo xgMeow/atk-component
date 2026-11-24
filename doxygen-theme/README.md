@@ -263,6 +263,40 @@ Doxygen 把「面板同步」开关 `#nav-sync` 生成在左树 `#nav-tree-conte
 已知的布局限制：桌面布局在 768～870px 这一档本来就挤（标题会和中间 tab 重叠），
 这 48px（36 图标 + 12 间距）会让按钮压到最后一个 tab 上；更宽（≥1000px）就正常了。
 
+### signature-normalize.js（成员签名排版）
+
+**现象**：成员汇总表和成员详细说明里的签名，在页面上显示成
+`IAccessConstraint * AddConstraint ( EAccessConstraints eConstraint )`、
+`std::vector< std::string > AvailableConstraints ()`；选中复制时单元格之间还会带上 tab，
+返回类型末尾那个 NBSP（`&#160;`）也一起进剪贴板——粘进源码就是非法字符
+（MSVC `C2018: unknown character '0xa0'`，GCC `stray '\302'`）。
+
+**原因**：Doxygen 把一条签名拆进表格单元格输出。汇总表拆成 `td.memItemLeft`（返回类型，
+末尾补 `&#160;` 撑列间距）+ `td.memItemRight`（函数名和参数）；详细说明的签名条拆得更碎
+（`IAccessConstraint * AddConstraint ` / `(` / 参数类型 / 参数名 / `)`），单元格之间是 2px 的
+`border-spacing`。Doxygen 归整类型时又会写成 `std::vector< std::string >`、
+`IAccessConstraint *`，几处拼起来就是错的排版。
+
+**修法**（脚本和 CSS 各管一半）：
+
+- `signature-normalize.js` 在 `DOMContentLoaded` 后重排签名区（`td.memItemLeft` /
+  `td.memItemRight` / `.memproto table.memname td`）文本节点里的空白：`*` `&` 贴类型、
+  `(` 贴函数名、`)` `,` 前不留空格、`<` `>` 内侧不留空格；返回类型末尾的 NBSP 保留
+  （它同时是汇总表两列之间的那个空格）。同时在 `copy` 事件里把选区纯文本的 tab / NBSP
+  换成普通空格，同一条签名的多行参数并成一行——**只有选区两端都落在签名区才接管**，
+  从签名拖到说明区的选择仍走浏览器默认行为。
+- `style.css` 的「成员签名排版」一节把签名条的 `border-spacing` 和单元格内边距归零，
+  让 `(` `)` 贴住；参数类型和参数名之间的空格改由 `td.paramname` 的 `padding-left` 提供
+  （`td` 是 table-cell，`margin` 在表格布局里不生效）。
+
+成员列表页（`*-members.html`）的签名放在 `td.entry` 里，脚本只在这一页追加显示重排，
+不接管复制——整行复制时还带着所属类名，那本来就不是「复制一条签名」。
+
+**改之前要知道的**：脚本只改文本节点、不改 DOM 结构，所以参数类型的链接、关键字高亮、
+签名标题的锚点都不受影响；详细说明的签名条仍是「一个参数一行」，只在复制时合并成一行。
+升级 Doxygen 后先确认 class 页面里这两处结构没变：汇总表仍是 `td.memItemLeft` +
+`td.memItemRight`，签名条仍是 `.memproto > table.memname > tr > td`。
+
 ### 首帧布局与 Mermaid（点左树时先撑满再闪出左栏）
 
 **现象**：点左侧树里的任意条目，新页面先按「没有左栏」的样子从窗口最左边铺满正文，

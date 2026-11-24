@@ -3,7 +3,8 @@
      1. TITLEAREA 区块——原来用 <table>+#projectrow 排版，现改为 flex 容器 + 自有类名（.atk-*）；
      2. 树脚本之后加了一段内联脚本，把上次拖动的栏宽读进 CSS 变量（首帧就按最终宽度排版）；
      3. Mermaid 占位符换成 mermaid-lazy.js（原占位符是模块脚本，会阻塞 DOMContentLoaded）；
-     4. </head> 前加了 nav-row-click.js / nav-sync-dock.js / mermaid-lazy.js 三个补丁脚本。
+     4. </head> 前加了 nav-row-click.js / nav-sync-dock.js / mermaid-lazy.js /
+        signature-normalize.js 四个补丁脚本。
      head 里的 treeview / search / stylesheet / extrastylesheet / mathjax 等 twig 占位符
      除第 3 条外一律未动。注意：不要在模板注释里写出占位符本身（带 $ 前缀的那个词），
      Doxygen 会把注释里的占位符也一并替换，替换结果会跑到 <!DOCTYPE> 之前，
@@ -74,6 +75,8 @@ $extrastylesheet
 <script type="text/javascript" src="$relpath^nav-row-click.js"></script>
 <!-- 面板同步开关挪到导航栏、钉在搜索框左边（见 doxygen-theme/README.md） -->
 <script type="text/javascript" src="$relpath^nav-sync-dock.js"></script>
+<!-- 成员签名排版归一化：去掉 Doxygen 表格拆出来的多余空格，复制时清掉 tab / NBSP（见 doxygen-theme/README.md） -->
+<script type="text/javascript" src="$relpath^signature-normalize.js"></script>
 </head>
 <body>
 <!--BEGIN FULL_SIDEBAR-->

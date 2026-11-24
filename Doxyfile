@@ -122,10 +122,12 @@ HTML_HEADER            = doxygen-theme/templates/header.html
 # 自定义样式表：站点皮肤（已并入原先单独的 doxy_strip_tags 规则）
 HTML_EXTRA_STYLESHEET  = doxygen-theme/skin/style.css
 # 额外脚本：左树整行可点（Doxygen 只把条目文字包在 <a> 里，行内空白区原本点不动）、
-# 面板同步开关挪进导航栏、Mermaid 按需加载（原占位符是模块脚本，会阻塞 DOMContentLoaded）
+# 面板同步开关挪进导航栏、Mermaid 按需加载（原占位符是模块脚本，会阻塞 DOMContentLoaded）、
+# 成员签名排版归一化（把表格拆出来的多余空格还原成 C++ 写法，复制时清掉 tab / NBSP）
 HTML_EXTRA_FILES       = doxygen-theme/patches/nav-row-click.js \
                          doxygen-theme/patches/nav-sync-dock.js \
-                         doxygen-theme/patches/mermaid-lazy.js
+                         doxygen-theme/patches/mermaid-lazy.js \
+                         doxygen-theme/patches/signature-normalize.js
 
 # ============================================================================
 # 注释解析
