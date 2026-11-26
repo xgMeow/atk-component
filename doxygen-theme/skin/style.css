@@ -22,6 +22,21 @@ dl.section.since {
   display: none !important;
 }
 
+/* ---------- 隐藏「类成员 > 变量」索引页的入口 ---------- */
+/* Doxygen 按成员类型把「类成员」索引拆成 全部 / 函数 / 变量 三页，没有任何配置项能单独
+   关掉某一类（layout.xml 里的 classmembers 只能整块开关）。这一页只有 AsTCatRes 的
+   4 个字段，留着只是噪声，所以这里把入口藏掉：
+     - 左树：navtreedata.js 里的 [ "变量", "functions_vars.html", null ]
+     - 顶部「类」下拉：menudata.js 里的 { text:"变量", url:"functions_vars.html" }
+   页面 functions_vars.html 本身仍会生成（孤儿页，与 pages.html 同样处理）；
+   要让文件也不存在，只能加构建后处理把它删掉。
+   用 [href$=…] 而不是 [href=…]：navtree.js / menu.js 拼的是 relpath + 文件名，
+   将来产物挪进子目录也不会失配。:has() 不支持时规则整体失效，只是照旧显示。 */
+#nav-tree li:has(> .item .label a[href$="functions_vars.html"]),
+#main-menu li:has(> a[href$="functions_vars.html"]) {
+  display: none;
+}
+
 /* ---------- 函数/参数表 ---------- */
 /* 参数表：方向列做成淡色小标签 */
 table.params td.paramdir {
